@@ -1,0 +1,1 @@
+- acces error : sudo chown -R $(whoami) .     si      chmod -R u+rw .
