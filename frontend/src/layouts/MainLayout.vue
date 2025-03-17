@@ -12,10 +12,10 @@
         />
 
         <q-toolbar-title>
-          Quasar App
+        StaffHUB
         </q-toolbar-title>
 
-        <div>Quasar v{{ $q.version }}</div>
+        <div> v 28.02.2025</div>
       </q-toolbar>
     </q-header>
 
@@ -24,7 +24,9 @@
       show-if-above
       bordered
     >
-      <q-list>
+    <DrawerTabs />
+    <Meniu v-if="utilizatorStore.eAutentificat"/>
+      <q-list v-if="utilizatorStore.eAutentificat">
         <q-item-label
           header
         >
@@ -48,7 +50,10 @@
 <script setup>
 import { ref } from 'vue'
 import EssentialLink from 'components/EssentialLink.vue'
-
+import Meniu from 'components/Meniu.vue'
+import DrawerTabs from 'components/DrawerTabs.vue'
+import { useUtilizatorStore } from 'stores/useUtilizatorStores';
+const utilizatorStore = useUtilizatorStore();
 const linksList = [
   {
     title: 'Docs',
