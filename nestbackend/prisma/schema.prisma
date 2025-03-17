@@ -37,3 +37,32 @@ enum Availibility {
   IN_STORE
   ONLINE
 }
+
+model Structure {
+  id     Int @id @default(autoincrement())
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+    attributes StructureAttributes[] 
+}
+
+model StructureAttributes {
+  id             Int       @id @default(autoincrement())
+  structure      Structure @relation(fields: [structureId], references: [id])
+  structureId    Int
+  datatype       Datatypes
+  attributeName  String
+  attributeValue String
+  status         String?   
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+enum Datatypes {
+  TEXT
+  FLOAT
+  DATE 
+  TIME
+  BOOLEAN
+}
+
