@@ -4,7 +4,7 @@
     <model-crud-table
       v-if="modelMetadata"
       :model-metadata="modelMetadata"
-      :base-url="'http://localhost:3334/structure'"
+      :base-url="`${host}/structure`"
     />
     <div v-else-if="error" class="text-negative">
       {{ error }}
@@ -18,8 +18,18 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { host } from '../config/api';
 import ModelCrudTable from 'components/ModelCrudTable.vue'
+import { useUtilizatorStore } from 'stores/useUtilizatorStores'
+
+const router = useRouter()
+const utilizatorStore = useUtilizatorStore()
+
+if (!utilizatorStore.eAutentificat) {
+  router.push('/')
+}
 
 interface ModelField {
   name: string;
@@ -41,7 +51,7 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://localhost:3334/features/models/Structure')
+    const response = await axios.get(host+'/features/models/Structure')
     modelMetadata.value = response.data
   } catch (err: any) {
     error.value = err.message

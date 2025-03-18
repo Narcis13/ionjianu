@@ -90,6 +90,7 @@
   <script setup>
   import { ref } from 'vue';
   import { useQuasar } from 'quasar'
+  import { useRouter } from 'vue-router'
   import { useUtilizatorStore } from 'stores/useUtilizatorStores';
   import { host } from '../config/api';
   import axios from 'axios';
@@ -100,7 +101,7 @@
   const utilizatorStore = useUtilizatorStore();
   const $q = useQuasar();
   const loading = ref(false);
-  
+  const router = useRouter()
   // User information state
   const userInfo = ref({
     name: '',
@@ -179,6 +180,8 @@
   
     // Switch to login tab
     activeTab.value = 'tab1';
+// Redirect to root page using router
+   router.push('/');
   }
   </script>
   

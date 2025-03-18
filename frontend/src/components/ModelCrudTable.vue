@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="q-pa-xl">
     <!-- Table with loading state and data display -->
     <q-table
       :rows="items"
@@ -11,7 +11,7 @@
     >
       <template v-slot:top>
         <div class="row full-width">
-          <div class="col-6 q-table__title">{{ modelMetadata?.name }}</div>
+          <div class="col-6 q-table__title">{{ props.modelMetadata?.name }}</div>
           <div class="col-6 text-right">
             <q-btn color="primary" icon="add" label="Add New" @click="openCreateDialog" />
           </div>
@@ -35,16 +35,20 @@
     <q-dialog v-model="dialogVisible" persistent>
       <q-card style="min-width: 350px">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">{{ isEditing ? 'Edit' : 'Create' }} {{ modelMetadata?.name }}</div>
+          <div class="text-h6">{{ isEditing ? 'Edit' : 'Create' }} {{ props.modelMetadata?.name }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section>
           <q-form @submit="handleSubmit" class="q-gutter-md">
-            <template v-for="field in modelMetadata?.fields" :key="field.name">
+            <template v-for="field in props.modelMetadata?.fields" :key="field.name">
+                            <!-- Add debugging output -->
+                            <!-- <div  class="text-caption">
+                              Field: {{ field.name }} -> ({{ field.type }})
+                             </div> -->
               <q-input
-                v-if="field.type === 'string' && !field.isId"
+                v-if="field.type === 'varchar' && !field.isId"
                 v-model="formData[field.name]"
                 :label="field.name"
                 :rules="[
@@ -128,6 +132,7 @@ const columns = computed(() => {
 // Reset form data when dialog closes
 watch(dialogVisible, (newVal) => {
   if (!newVal) {
+    console.log('Dialog closed')
     formData.value = {}
     currentItem.value = null
     isEditing.value = false
@@ -160,6 +165,14 @@ const isDuplicateValue = (fieldName: string, value: any) => {
 
 // Dialog handlers
 const openCreateDialog = () => {
+  // Initialize form data with default values from model metadata
+  formData.value = {}
+  if (props.modelMetadata?.fields) {
+    props.modelMetadata.fields.forEach(field => {
+      formData.value[field.name] = field.default ?? null
+    })
+  }
+  console.log('Form data:', formData.value)
   isEditing.value = false
   dialogVisible.value = true
 }
