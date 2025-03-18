@@ -59,8 +59,8 @@
             
             <q-card-section>
               <div class="q-py-sm">
-                <div class="text-subtitle2">Nume utilizator</div>
-                <div>{{ utilizatorStore.utilizator.first_name+' '+utilizatorStore.utilizator.last_name || 'Neautentificat' }}</div>
+                <div class="text-subtitle2">Utilizator</div>
+                <div>{{utilizatorStore.utilizator.user_profile.username+' '+ utilizatorStore.utilizator.user_profile.email|| 'Neautentificat' }}</div>
               </div>
               
               <div class="q-py-sm">

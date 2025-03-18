@@ -30,25 +30,25 @@
         <q-expansion-item
           expand-separator
           icon="point_of_sale"
-          label="Casierie"
+          label="Schema"
           header-class="text-primary"
         >
           <q-card>
             <q-card-section>
               <q-list dense>
-                <q-item clickable v-ripple>
+                <q-item clickable v-ripple to="/structuri">
                   <q-item-section>
-                    <q-item-label>Oferta servicii</q-item-label>
+                    <q-item-label>Structuri</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-item clickable v-ripple>
                   <q-item-section>
-                    <q-item-label>Incasare</q-item-label>
+                    <q-item-label>Substructuri</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-item clickable v-ripple>
                   <q-item-section>
-                    <q-item-label>Plati</q-item-label>
+                    <q-item-label>Persoane</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
