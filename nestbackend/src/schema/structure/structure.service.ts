@@ -23,9 +23,13 @@ export class StructureService {
   }
 
   async update(id: number, updateStructureDto: Prisma.StructureUpdateInput) {
+    console.log('update ',new Date())
     return this.databaseService.structure.update({
       where: { id },
-      data: updateStructureDto,
+      data: {
+        ...updateStructureDto,
+        updatedAt: new Date(),
+      },
     });
   }
 

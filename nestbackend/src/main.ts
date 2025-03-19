@@ -10,7 +10,7 @@ async function bootstrap() {
   app.useStaticAssets(join(__dirname, '..', 'public'));
   app.setBaseViewsDir(join(__dirname, '..', 'views'));
   app.setViewEngine('hbs');
-  //console.log(process.env.JWT_SECRET);
+  //console.log('TZ',process.env.TZ);
 
   await app.listen(process.env.PORT ?? 3334);
 }

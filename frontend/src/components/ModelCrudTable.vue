@@ -172,7 +172,7 @@ const openCreateDialog = () => {
       formData.value[field.name] = field.default ?? null
     })
   }
-  console.log('Form data:', formData.value)
+
   isEditing.value = false
   dialogVisible.value = true
 }
@@ -211,11 +211,17 @@ const confirmDelete = (item: any) => {
 
 // Form submission handler
 const handleSubmit = async () => {
+  const cleanedFormData = Object.fromEntries(
+        Object.entries(formData.value)
+          .filter(([key, value]) => value !== null && key !== 'createdAt')
+      );
   try {
     if (isEditing.value) {
-      await axios.put(`${props.baseUrl}/${currentItem.value.id}`, formData.value)
+      await axios.patch(`${props.baseUrl}/${currentItem.value.id}`, cleanedFormData)
     } else {
-      await axios.post(props.baseUrl, formData.value)
+
+      console.log('Clean Form data:', cleanedFormData)
+      await axios.post(props.baseUrl, cleanedFormData)
     }
     await loadItems()
     dialogVisible.value = false
