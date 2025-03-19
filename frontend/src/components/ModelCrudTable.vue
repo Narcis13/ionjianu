@@ -217,7 +217,7 @@ const handleSubmit = async () => {
       );
   try {
     if (isEditing.value) {
-      await axios.patch(`${props.baseUrl}/${currentItem.value.id}`, cleanedFormData)
+      await axios.patch(`${props.baseUrl}/${currentItem.value.id}`, {...cleanedFormData,updatedAt: new Date()})
     } else {
 
       console.log('Clean Form data:', cleanedFormData)

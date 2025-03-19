@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { Prisma } from '@prisma/client';
+import { getRomanianDate } from 'src/utils/timezone';
 
 @Injectable()
 export class StructureService {
@@ -23,13 +24,13 @@ export class StructureService {
   }
 
   async update(id: number, updateStructureDto: Prisma.StructureUpdateInput) {
-    console.log('update ',new Date())
+    console.log('update ',getRomanianDate())
     return this.databaseService.structure.update({
       where: { id },
-      data: {
-        ...updateStructureDto,
-        updatedAt: new Date(),
-      },
+      data: 
+        updateStructureDto
+   
+      
     });
   }
 
