@@ -85,6 +85,7 @@
 import { ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import axios from 'axios'
+import { useUtilizatorStore } from '../stores/useUtilizatorStores'
 
 interface ModelField {
   name: string
@@ -184,44 +185,34 @@ const openEditDialog = (item: any) => {
   dialogVisible.value = true
 }
 
-const confirmDelete = (item: any) => {
-  $q.dialog({
-    title: 'Confirm',
-    message: 'Are you sure you want to delete this item?',
-    cancel: true,
-    persistent: true
-  }).onOk(async () => {
-    try {
-      await axios.delete(`${props.baseUrl}/${item.id}`)
-      await loadItems()
-      $q.notify({
-        color: 'positive',
-        message: 'Item deleted successfully',
-        icon: 'check'
-      })
-    } catch (error: any) {
-      $q.notify({
-        color: 'negative',
-        message: `Error deleting item: ${error.message}`,
-        icon: 'error'
-      })
-    }
-  })
-}
+const utilizatorStore = useUtilizatorStore()
 
-// Form submission handler
+// Update the handleSubmit function
 const handleSubmit = async () => {
   const cleanedFormData = Object.fromEntries(
-        Object.entries(formData.value)
-          .filter(([key, value]) => value !== null && key !== 'createdAt')
-      );
+    Object.entries(formData.value)
+      .filter(([key, value]) => value !== null && key !== 'createdAt')
+  );
+  
+  const config = {
+    headers: {
+      Authorization: `Bearer ${utilizatorStore.utilizator?.access_token}`
+    }
+  };
+  let date = new Date();
+
+// Add 2 hours (2 hours * 60 minutes * 60 seconds * 1000 milliseconds)
+date.setTime(date.getTime() + (2 * 60 * 60 * 1000));
   try {
     if (isEditing.value) {
-      await axios.patch(`${props.baseUrl}/${currentItem.value.id}`, {...cleanedFormData,updatedAt: new Date()})
+      await axios.patch(
+        `${props.baseUrl}/${currentItem.value.id}`, 
+        {...cleanedFormData, updatedAt: date},
+        config
+      )
     } else {
-
-      console.log('Clean Form data:', cleanedFormData)
-      await axios.post(props.baseUrl, cleanedFormData)
+    //  console.log('Clean Form data:', cleanedFormData)
+      await axios.post(props.baseUrl, {...cleanedFormData, updatedAt: date}, config)
     }
     await loadItems()
     dialogVisible.value = false
@@ -237,6 +228,36 @@ const handleSubmit = async () => {
       icon: 'error'
     })
   }
+}
+
+// Update the confirmDelete function
+const confirmDelete = (item: any) => {
+  $q.dialog({
+    title: 'Confirm',
+    message: 'Are you sure you want to delete this item?',
+    cancel: true,
+    persistent: true
+  }).onOk(async () => {
+    try {
+      await axios.delete(`${props.baseUrl}/${item.id}`, {
+        headers: {
+          Authorization: `Bearer ${utilizatorStore.utilizator?.access_token}`
+        }
+      })
+      await loadItems()
+      $q.notify({
+        color: 'positive',
+        message: 'Item deleted successfully',
+        icon: 'check'
+      })
+    } catch (error: any) {
+      $q.notify({
+        color: 'negative',
+        message: `Error deleting item: ${error.message}`,
+        icon: 'error'
+      })
+    }
+  })
 }
 
 // Load items on mount
