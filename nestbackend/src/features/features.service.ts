@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-
+import { PrismaSchemaParserService } from './prisma-schema-parser.service';
 export interface TableColumn {
   name: string;
   type: string;
@@ -16,7 +16,13 @@ export interface TableInfo {
 }
 
 @Injectable()
-export class FeaturesService {
+export class FeaturesService implements OnModuleInit{
+  constructor(private prismaSchemaParserService: PrismaSchemaParserService) {}
+
+  async onModuleInit() {
+    await this.prismaSchemaParserService.parseSchema();
+  }
+  
   private prisma = new PrismaClient();
 
   async getModelMetadata(modelName: string) {
@@ -71,4 +77,21 @@ export class FeaturesService {
       fieldCount: Number(table.fieldCount)
     }));
   }
+
+  async prismaAllModels(): Promise<any> {
+   // await this.prismaSchemaParserService.parseSchema();
+    
+    // Get all models
+    const models = this.prismaSchemaParserService.getModels();
+    return models;
+
+  }
+
+   prismaModel(modelName: string): any {
+   return this.prismaSchemaParserService.getModelByName(modelName)
+  }
+
+   prismaEnums(): any {
+    return this.prismaSchemaParserService.getEnums()
+   }
 }

@@ -18,4 +18,20 @@ export class FeaturesController {
   async getAllModels() {
     return await this.featuresService.getAllModels();
   }
+
+  @Get('prisma/models')
+  async prismaAllModels() {
+    return await this.featuresService.prismaAllModels();
+  }
+
+  @Get('prisma/models/:modelName')
+  async prismaModel(@Param('modelName') modelName: string) {
+    return await this.featuresService.prismaModel(modelName);
+  }
+
+  @Get('prisma/modelenums')
+  async prismaEnums() {
+    return await this.featuresService.prismaEnums();
+  }
+
 }

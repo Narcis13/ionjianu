@@ -43,8 +43,8 @@ model Structure {
   name String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-   status   String?  @default("active")  @db.VarChar(24)
-    attributes StructureAttributes[] 
+  status   String?  @default("active")  @db.VarChar(24)
+  attributes StructureAttributes[] 
 }
 
 model StructureAttributes {
@@ -54,7 +54,7 @@ model StructureAttributes {
   datatype       Datatypes
   attributeName  String
   attributeValue String
-    status   String?  @default("active")  @db.VarChar(24)
+  status   String?  @default("active")  @db.VarChar(24)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
