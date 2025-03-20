@@ -41,9 +41,9 @@
                     <q-item-label>Structuri</q-item-label>
                   </q-item-section>
                 </q-item>
-                <q-item clickable v-ripple>
+                <q-item clickable v-ripple to="/atributestructuri">
                   <q-item-section>
-                    <q-item-label>Substructuri</q-item-label>
+                    <q-item-label>Atribute structuri</q-item-label>
                   </q-item-section>
                 </q-item>
                 <q-item clickable v-ripple>
