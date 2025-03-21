@@ -53,7 +53,7 @@
                     <q-select
                       v-model="editingItem[field.name + 'Id']"
                       :label="formatLabel(field.name + 'Id')"
-                      :options="relationOptions[field.relationName] || []"
+                      :options="relationOptions[field.type] || []"
                       option-value="id"
                       option-label="name"
                       emit-value
@@ -140,6 +140,7 @@
   <script setup>
   import { ref, computed, onMounted, reactive } from 'vue';
   import { useQuasar } from 'quasar';
+  import { host } from '../config/api';
   import axios from 'axios';
   
   const props = defineProps({
@@ -200,7 +201,13 @@
       .map(prop => ({
         name: prop.name,
         label: formatLabel(prop.name),
-        field: prop.name,
+        field: row => {
+          // Handle relation fields
+          if (prop.isRelation && row[prop.name]) {
+            return row[prop.name].name;
+          }
+          return row[prop.name];
+        },
         sortable: true,
         align: ['Int', 'Float'].includes(prop.type) ? 'right' : 'left'
       }));
@@ -228,20 +235,22 @@
         return { ...prop, ...override };
       });
   });
-  
+
   // Lifecycle hooks
   onMounted(async () => {
     await fetchModelMetadata();
     await fetchEnumOptions();
     await fetchRelationOptions();
     await fetchItems();
+    console.log('formFields', formFields.value);
   });
   
   // Methods
   async function fetchModelMetadata() {
     try {
       loading.value = true;
-      const response = await axios.get(`/api/schema-parser/models/${props.modelName}`);
+      //host+'/features/models/Structure'
+      const response = await axios.get(`${host}/features/prisma/models/${props.modelName}`);
       modelMetadata.value = response.data;
     } catch (error) {
       console.error('Error fetching model metadata:', error);
@@ -264,7 +273,7 @@
       
       if (enumTypes.length === 0) return;
       
-      const response = await axios.get('/api/schema-parser/enums');
+      const response = await axios.get(`${host}/features/prisma/modelenums`);
       const enums = response.data;
       
       enumTypes.forEach(enumType => {
@@ -272,6 +281,7 @@
         if (enumData) {
           enumOptions.value[enumType] = enumData.values;
         }
+        console.log('enum options', enumOptions.value);
       });
     } catch (error) {
       console.error('Error fetching enum options:', error);
@@ -287,8 +297,11 @@
       
       for (const field of relationFields) {
         const modelName = field.type;
-        const response = await axios.get(`${props.apiBasePath}/${modelName.toLowerCase()}`);
-        relationOptions.value[modelName] = response.data;
+       
+       const response = await axios.get(`${props.apiBasePath}/${modelName.toLowerCase()}`);
+       relationOptions.value[modelName] = response.data;
+       
+       console.log('relationOptions', relationOptions.value);
       }
     } catch (error) {
       console.error('Error fetching relation options:', error);
@@ -353,16 +366,22 @@
       
       loading.value = true;
       
-      if (editingItem.value.id) {
+      // Clean the data before sending to backend
+      const cleanedData = { ...editingItem.value };
+      delete cleanedData.structure;
+      delete cleanedData.createdAt;
+      delete cleanedData.updatedAt;
+      
+      if (cleanedData.id) {
         // Update existing item
-        await axios.put(`${props.apiBasePath}/${editingItem.value.id}`, editingItem.value);
+        await axios.patch(`${props.apiBasePath}/${cleanedData.id}`, cleanedData);
         $q.notify({
           type: 'positive',
           message: `${props.modelName} updated successfully`
         });
       } else {
         // Create new item
-        await axios.post(props.apiBasePath, editingItem.value);
+        await axios.post(props.apiBasePath, cleanedData);
         $q.notify({
           type: 'positive',
           message: `${props.modelName} created successfully`

@@ -16,6 +16,7 @@ interface PrismaProperty {
   relationFields?: string[];
   relationReferences?: string[];
   dbAttributes?: string[];
+  isEnum: boolean; // Add this new property
 }
 
 interface PrismaModel {
@@ -59,7 +60,25 @@ export class PrismaSchemaParserService {
     this.models = [];
     this.enums = [];
 
-    // Extract models
+    // Extract enums first
+    const enumRegex = /enum\s+(\w+)\s+{([^}]*)}/gs;
+    let enumMatch;
+    while ((enumMatch = enumRegex.exec(this.schemaContent)) !== null) {
+      const enumName = enumMatch[1];
+      const enumBody = enumMatch[2];
+      
+      const values = enumBody
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0 && !line.startsWith('//'));
+      
+      this.enums.push({
+        name: enumName,
+        values,
+      });
+    }
+
+    // Then extract models
     const modelRegex = /model\s+(\w+)\s+{([^}]*)}/gs;
     let modelMatch;
     while ((modelMatch = modelRegex.exec(this.schemaContent)) !== null) {
@@ -71,24 +90,6 @@ export class PrismaSchemaParserService {
       this.models.push({
         name: modelName,
         properties,
-      });
-    }
-
-    // Extract enums
-    const enumRegex = /enum\s+(\w+)\s+{([^}]*)}/gs;
-    let enumMatch;
-    while ((enumMatch = enumRegex.exec(this.schemaContent)) !== null) {
-      const enumName = enumMatch[1];
-      const enumBody = enumMatch[2];
-      
-      const values = enumBody
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-      
-      this.enums.push({
-        name: enumName,
-        values,
       });
     }
   }
@@ -111,6 +112,9 @@ export class PrismaSchemaParserService {
 
       const [name, type, ...modifiers] = parts;
       
+      // Remove any array brackets for type checking
+      const baseType = type.replace('[]', '');
+      
       // Basic property info
       const property: PrismaProperty = {
         name,
@@ -121,6 +125,7 @@ export class PrismaSchemaParserService {
         isUnique: modifiers.includes('@unique'),
         hasDefault: line.includes('@default'),
         isRelation: false,
+        isEnum: this.isEnum(baseType), // Check if type is an enum
       };
 
       // Extract default value if present

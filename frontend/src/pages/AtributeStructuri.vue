@@ -2,7 +2,7 @@
     <q-page padding>
       <dynamic-crud
         modelName="StructureAttributes"
-        apiBasePath="/api/structure-attributes"
+        :apiBasePath="apiBasePath"
         :excludeFields="['id', 'createdAt', 'updatedAt']"
         :fieldOverrides="fieldOverrides"
         :initialValues="initialValues"
@@ -12,6 +12,7 @@
   
   <script setup>
   import { ref, onMounted } from 'vue';
+  import { host } from '../config/api';
   import axios from 'axios';
   import DynamicCrud from 'components/DynamicCrud.vue';
   
@@ -29,6 +30,7 @@
     datatype: 'TEXT'
   });
   
+  const apiBasePath = host + '/structure-attributes';
   // You can also fetch any additional data needed for this specific model
   onMounted(async () => {
     try {
