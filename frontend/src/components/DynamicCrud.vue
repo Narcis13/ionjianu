@@ -142,6 +142,7 @@
   import { useQuasar } from 'quasar';
   import { host } from '../config/api';
   import axios from 'axios';
+  import { useUtilizatorStore } from '../stores/useUtilizatorStores'
   
   const props = defineProps({
     modelName: {
@@ -170,7 +171,7 @@
   });
   
   const $q = useQuasar();
-  
+  const utilizatorStore = useUtilizatorStore()
   // State
   const loading = ref(false);
   const items = ref([]);
@@ -365,7 +366,15 @@
       }
       
       loading.value = true;
-      
+      const config = {
+            headers: {
+              Authorization: `Bearer ${utilizatorStore.utilizator?.access_token}`
+            }
+          };
+       let date = new Date();
+
+        // Add 2 hours (2 hours * 60 minutes * 60 seconds * 1000 milliseconds)
+        date.setTime(date.getTime() + (2 * 60 * 60 * 1000));
       // Clean the data before sending to backend
       const cleanedData = { ...editingItem.value };
       delete cleanedData.structure;
@@ -374,14 +383,15 @@
       
       if (cleanedData.id) {
         // Update existing item
-        await axios.patch(`${props.apiBasePath}/${cleanedData.id}`, cleanedData);
+        await axios.patch(`${props.apiBasePath}/${cleanedData.id}`, {...cleanedData, updatedAt: date},
+        config);
         $q.notify({
           type: 'positive',
           message: `${props.modelName} updated successfully`
         });
       } else {
         // Create new item
-        await axios.post(props.apiBasePath, cleanedData);
+        await axios.post(props.apiBasePath,  {...cleanedData, updatedAt: date}, config);
         $q.notify({
           type: 'positive',
           message: `${props.modelName} created successfully`

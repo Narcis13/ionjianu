@@ -1,12 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { StructureAttributesService } from './structure-attributes.service';
 import { Prisma } from '@prisma/client';
-
+import { AuthGuard } from '@nestjs/passport';
 @Controller('structure-attributes')
 export class StructureAttributesController {
   constructor(private readonly structureAttributesService: StructureAttributesService) {}
 
   @Post()
+  @UseGuards(AuthGuard('jwt'))
   create(@Body() createStructureAttributeDto: Prisma.StructureAttributesCreateInput) {
     return this.structureAttributesService.create(createStructureAttributeDto);
   }
@@ -26,6 +27,7 @@ export class StructureAttributesController {
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard('jwt'))
   update(
     @Param('id') id: string,
     @Body() updateStructureAttributeDto: Prisma.StructureAttributesUpdateInput,
@@ -34,6 +36,7 @@ export class StructureAttributesController {
   }
 
   @Delete(':id')
+  @UseGuards(AuthGuard('jwt'))
   remove(@Param('id') id: string) {
     return this.structureAttributesService.remove(+id);
   }
