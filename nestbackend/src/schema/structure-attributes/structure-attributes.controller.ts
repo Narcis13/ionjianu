@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { StructureAttributesService } from './structure-attributes.service';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from '@nestjs/passport';
+import { FilterStructureAttributeDto } from './dto/filter-structure-attribute.dto';
 @Controller('structure-attributes')
 export class StructureAttributesController {
   constructor(private readonly structureAttributesService: StructureAttributesService) {}
@@ -13,8 +14,8 @@ export class StructureAttributesController {
   }
 
   @Get()
-  findAll() {
-    return this.structureAttributesService.findAll();
+  findAll(@Query() filters: FilterStructureAttributeDto) {
+    return this.structureAttributesService.findAll(filters);
   }
 
   @Get('structure')

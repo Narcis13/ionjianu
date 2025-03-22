@@ -4,11 +4,11 @@ import { Transform, Type } from 'class-transformer';
 export class FilterStructureAttributeDto {
   @IsOptional()
   @IsString()
-  name?: string;
+  attributeName?: string;
 
   @IsOptional()
   @IsString()
-  description?: string;
+  attributeValue?: string;
 
   @IsOptional()
   @IsNumber()

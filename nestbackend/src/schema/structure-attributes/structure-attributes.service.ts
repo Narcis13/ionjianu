@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { Prisma } from '@prisma/client';
-
+import { FilterService } from './filter.service';
+import { FilterStructureAttributeDto } from './dto/filter-structure-attribute.dto';
 @Injectable()
 export class StructureAttributesService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  private filterConfig = {
+    attributeName: { field: 'attributeName', operator: 'contains' },
+    attributeValue: { field: 'attributeValue', operator: 'contains' },
+    structureId: { field: 'structureId', operator: 'equals' , type:'int'},
+    isActive: { field: 'isActive', operator: 'equals' },
+    // Add more mappings as needed
+  };
+  constructor(private readonly databaseService: DatabaseService, private filterService:FilterService) {}
 
   async create(data: Prisma.StructureAttributesCreateInput) {
     return this.databaseService.structureAttributes.create({
@@ -12,12 +20,30 @@ export class StructureAttributesService {
     });
   }
 
-  async findAll() {
-    return this.databaseService.structureAttributes.findMany({
-      include: {
-        structure: true,
+  async findAll(filters: FilterStructureAttributeDto) {
+    const where = this.filterService.createWhereCondition(filters, this.filterConfig);
+    const pagination = this.filterService.createPaginationParams(filters);
+
+    const [data, total] = await Promise.all([
+      this.databaseService.structureAttributes.findMany({
+        where,
+        include: {
+          structure: true,
+        },
+        ...pagination,
+      }),
+      this.databaseService.structureAttributes.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page: filters.page || 1,
+        limit: filters.limit || 10,
+        totalPages: Math.ceil(total / (filters.limit || 10)),
       },
-    });
+    };
   }
  async findAllStructures(){
   return this.databaseService.structure.findMany({});

@@ -323,15 +323,15 @@
         ...params
       };
       
-      const response = await axios.get(props.apiBasePath, { params: queryParams });
-      
+      const response = await axios.get(props.apiBasePath/*, { params: queryParams }*/);
+      console.log('response', response.data.data);
       // Handle different API response formats
-      if (Array.isArray(response.data)) {
-        items.value = response.data;
+      if (Array.isArray(response.data.data)) {
+        items.value = response.data.data;
         pagination.value.rowsNumber = response.data.length;
-      } else if (response.data.items && Array.isArray(response.data.items)) {
-        items.value = response.data.items;
-        pagination.value.rowsNumber = response.data.total || response.data.items.length;
+      } else if (response.data.data.items && Array.isArray(response.data.data.items)) {
+        items.value = response.data.data.items;
+        pagination.value.rowsNumber = response.data.data.total || response.data.data.items.length;
       } else {
         items.value = [];
         pagination.value.rowsNumber = 0;

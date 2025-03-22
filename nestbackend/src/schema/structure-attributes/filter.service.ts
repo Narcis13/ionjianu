@@ -11,7 +11,7 @@ export class FilterService {
    */
   createWhereCondition(
     filters: Record<string, any>,
-    config: Record<string, { field: string; operator: string }>,
+    config: Record<string, { field: string; operator: string; type?: string }>,
   ): Prisma.StructureAttributesWhereInput {
     const whereCondition: Prisma.StructureAttributesWhereInput = {};
     
@@ -21,21 +21,32 @@ export class FilterService {
     // Process each filter
     Object.keys(actualFilters).forEach((key) => {
       if (actualFilters[key] !== undefined && config[key]) {
-        const { field, operator } = config[key];
+        const { field, operator, type } = config[key];
+        let value = actualFilters[key];
+        
+        // Convert value based on type if specified
+        if (type === 'number' || type === 'int') {
+          // Handle array values for 'in' operator
+          if (operator === 'in' && Array.isArray(value)) {
+            value = value.map(item => Number(item));
+          } else {
+            value = Number(value);
+          }
+        }
         
         switch (operator) {
           case 'equals':
-            whereCondition[field] = { equals: actualFilters[key] };
+            whereCondition[field] = { equals: value };
             break;
           case 'contains':
-            whereCondition[field] = { contains: actualFilters[key], mode: 'insensitive' };
+            whereCondition[field] = { contains: value };
             break;
           case 'in':
-            whereCondition[field] = { in: actualFilters[key] };
+            whereCondition[field] = { in: value };
             break;
           // Add more operators as needed
           default:
-            whereCondition[field] = { equals: actualFilters[key] };
+            whereCondition[field] = { equals: value };
         }
       }
     });
