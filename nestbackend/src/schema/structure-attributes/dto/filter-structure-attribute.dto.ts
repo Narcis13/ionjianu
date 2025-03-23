@@ -1,10 +1,14 @@
-import { IsOptional, IsString, IsNumber, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsBoolean, IsIn } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class FilterStructureAttributeDto {
   @IsOptional()
   @IsString()
   attributeName?: string;
+
+  @IsOptional()
+  @IsString()
+  exactAttributeName?: string;
 
   @IsOptional()
   @IsString()
@@ -23,7 +27,10 @@ export class FilterStructureAttributeDto {
     return value;
   })
   isActive?: boolean;
-
+  
+  @IsOptional()
+  @IsString()
+  stare?: string;
   // Add more filters as needed based on your structure-attributes model
 
   // Pagination parameters
@@ -36,4 +43,15 @@ export class FilterStructureAttributeDto {
   @IsNumber()
   @Type(() => Number)
   limit?: number;
+
+  // Sorting parameters
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['asc', 'desc', 'ASC', 'DESC'])
+  @Transform(({ value }) => value?.toLowerCase())
+  sortOrder?: 'asc' | 'desc';
 }

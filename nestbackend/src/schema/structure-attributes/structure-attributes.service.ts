@@ -7,9 +7,10 @@ import { FilterStructureAttributeDto } from './dto/filter-structure-attribute.dt
 export class StructureAttributesService {
   private filterConfig = {
     attributeName: { field: 'attributeName', operator: 'contains' },
+    exactAttributeName: { field: 'attributeName', operator: 'equals' },
     attributeValue: { field: 'attributeValue', operator: 'contains' },
     structureId: { field: 'structureId', operator: 'equals' , type:'int'},
-    isActive: { field: 'isActive', operator: 'equals' },
+    stare: { field: 'status', operator: 'equals' },
     // Add more mappings as needed
   };
   constructor(private readonly databaseService: DatabaseService, private filterService:FilterService) {}
@@ -23,6 +24,7 @@ export class StructureAttributesService {
   async findAll(filters: FilterStructureAttributeDto) {
     const where = this.filterService.createWhereCondition(filters, this.filterConfig);
     const pagination = this.filterService.createPaginationParams(filters);
+    const orderBy = this.filterService.createSortingParams(filters, this.filterConfig);
 
     const [data, total] = await Promise.all([
       this.databaseService.structureAttributes.findMany({
@@ -30,6 +32,7 @@ export class StructureAttributesService {
         include: {
           structure: true,
         },
+        orderBy,
         ...pagination,
       }),
       this.databaseService.structureAttributes.count({ where }),

@@ -15,8 +15,8 @@ export class FilterService {
   ): Prisma.StructureAttributesWhereInput {
     const whereCondition: Prisma.StructureAttributesWhereInput = {};
     
-    // Remove pagination parameters
-    const { page, limit, ...actualFilters } = filters;
+    // Remove pagination and sorting parameters
+    const { page, limit, sortBy, sortOrder, ...actualFilters } = filters;
 
     // Process each filter
     Object.keys(actualFilters).forEach((key) => {
@@ -66,6 +66,34 @@ export class FilterService {
     return {
       skip: (page - 1) * limit,
       take: limit,
+    };
+  }
+
+  /**
+   * Creates sorting parameters for Prisma
+   * @param filters Object containing sorting parameters
+   * @param config Configuration for mapping filter fields to database fields
+   * @returns Sorting object for Prisma orderBy
+   */
+  createSortingParams(
+    filters: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+    config: Record<string, { field: string; operator: string; type?: string }>,
+  ) {
+    if (!filters.sortBy) {
+      return undefined;
+    }
+
+    // Find the database field name from config
+    const configEntry = Object.entries(config).find(
+      ([key, value]) => key === filters.sortBy || value.field === filters.sortBy
+    );
+
+    // If field is found in config, use the mapped field name, otherwise use the provided sortBy
+    const fieldName = configEntry ? configEntry[1].field : filters.sortBy;
+    const direction = filters.sortOrder || 'asc';
+
+    return {
+      [fieldName]: direction,
     };
   }
 }

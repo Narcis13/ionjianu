@@ -3,7 +3,7 @@
       <dynamic-crud
         modelName="StructureAttributes"
         :apiBasePath="apiBasePath"
-        :excludeFields="['id', 'createdAt', 'updatedAt']"
+        :excludeFields="['id', 'structureId','createdAt', 'updatedAt']"
         :fieldOverrides="fieldOverrides"
         :initialValues="initialValues"
       />
@@ -13,7 +13,7 @@
   <script setup>
   import { ref, onMounted } from 'vue';
   import { host } from '../config/api';
-  import axios from 'axios';
+
   import { useUtilizatorStore } from 'stores/useUtilizatorStores'
   import { useRouter } from 'vue-router'
   import DynamicCrud from 'components/DynamicCrud.vue';

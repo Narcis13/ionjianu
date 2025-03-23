@@ -9,8 +9,8 @@
         row-key="id"
         :loading="loading"
         :filter="filter"
-        :pagination.sync="pagination"
-        @request="onRequest"
+        :pagination="pagination"
+       
       >
         <template v-slot:top>
           <div class="row full-width">
@@ -182,9 +182,9 @@
   const pagination = ref({
     sortBy: 'id',
     descending: false,
-    page: 1,
+  //  page: 1,
     rowsPerPage: 10,
-    rowsNumber: 0
+  //  rowsNumber: 0
   });
   
   const showDialog = ref(false);
@@ -442,6 +442,7 @@
   }
   
   function onRequest(props) {
+    console.log('onRequest', props);
     const { page, rowsPerPage, sortBy, descending } = props.pagination;
     
     pagination.value.page = page;
