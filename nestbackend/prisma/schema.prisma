@@ -67,3 +67,49 @@ enum Datatypes {
   BOOLEAN
 }
 
+
+// Enum for the different types of content items
+enum ContentItemType {
+  PARAGRAPH
+  FILE
+  IMAGE
+}
+
+// Model for the Article (Blog Post)
+model Article {
+  id        Int      @id @default(autoincrement())
+  title     String
+  category  String
+  content   ContentItem[] // Relation to multiple ContentItem records
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Model for a single Content Item within an Article's content array
+model ContentItem {
+  id        Int             @id @default(autoincrement())
+  type      ContentItemType // The type of content (Paragraph, File, Image)
+  order     Int             // The position of this item within the article's content list
+
+  // --- Type-specific fields (optional based on 'type') ---
+
+  // For type: PARAGRAPH
+  html      String?         // Nullable, only used when type is PARAGRAPH
+
+  // For type: FILE
+  url       String?         // Nullable, only used when type is FILE
+  name      String?         // Nullable, only used when type is FILE
+
+  // For type: IMAGE
+  src       String?         // Nullable, only used when type is IMAGE
+  alt       String?         // Nullable, only used when type is IMAGE
+
+  // --- Relation back to the Article ---
+  articleId Int
+  article   Article         @relation(fields: [articleId], references: [id], onDelete: Cascade) // If Article is deleted, delete its ContentItems too
+
+
+
+}
+

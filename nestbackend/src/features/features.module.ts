@@ -4,17 +4,20 @@ import { FeaturesController } from './features.controller';
 import { FeaturesService } from './features.service';
 import { PrismaSchemaParserService } from './prisma-schema-parser.service';
 import { StructureAttributesModule } from 'src/schema/structure-attributes/structure-attributes.module';
+import { ArticlesModule } from 'src/schema/articles/articles.module';
 
 @Module({
   imports: [
     StructureModule,
-    StructureAttributesModule
+    StructureAttributesModule,
+    ArticlesModule
   ],
   controllers: [FeaturesController],
   providers: [FeaturesService,PrismaSchemaParserService],
   exports: [
     StructureModule,
-    StructureAttributesModule
+    StructureAttributesModule,
+    ArticlesModule
   ]
 })
 export class FeaturesModule {}

@@ -74,7 +74,7 @@
               </div>
   
               <!-- Paragraph Editor -->
-              <div v-if="item.type === 'paragraph'">
+              <div v-if="item.type === 'PARAGRAPH'">
                 <q-editor
                   v-model="item.html"
                   min-height="5rem"
@@ -89,7 +89,7 @@
               </div>
   
               <!-- File Editor -->
-              <div v-else-if="item.type === 'file'" class="q-gutter-sm q-mt-sm">
+              <div v-else-if="item.type === 'FILE'" class="q-gutter-sm q-mt-sm">
                  <q-input
                     filled dense
                     v-model="item.name"
@@ -111,7 +111,7 @@
               </div>
   
               <!-- Image Editor -->
-              <div v-else-if="item.type === 'image'" class="q-gutter-sm q-mt-sm">
+              <div v-else-if="item.type === 'IMAGE'" class="q-gutter-sm q-mt-sm">
                  <q-input
                     filled dense
                     v-model="item.src"
@@ -146,9 +146,9 @@
           </q-banner>
   
           <div class="q-mt-md q-gutter-sm">
-            <q-btn outline color="primary" icon="notes" label="Add Paragraph" @click="addContentItem('paragraph')" />
-            <q-btn outline color="primary" icon="attachment" label="Add File Link" @click="addContentItem('file')" />
-            <q-btn outline color="primary" icon="image" label="Add Image" @click="addContentItem('image')" />
+            <q-btn outline color="primary" icon="notes" label="Add Paragraph" @click="addContentItem('PARAGRAPH')" />
+            <q-btn outline color="primary" icon="attachment" label="Add File Link" @click="addContentItem('FILE')" />
+            <q-btn outline color="primary" icon="image" label="Add Image" @click="addContentItem('IMAGE')" />
           </div>
         </div>
   
@@ -226,14 +226,14 @@
   const addContentItem = (type: ContentItem['type']) => {
     let newItem: ContentItem;
     switch (type) {
-      case 'paragraph':
-        newItem = { type: 'paragraph', html: '<p></p>' };
+      case 'PARAGRAPH':
+        newItem = { type: 'PARAGRAPH', html: '' };
         break;
-      case 'file':
-        newItem = { type: 'file', url: '', name: '' };
+      case 'FILE':
+        newItem = { type: 'FILE', url: '', name: '' };
         break;
-      case 'image':
-        newItem = { type: 'image', src: '', alt: '' };
+      case 'IMAGE':
+        newItem = { type: 'IMAGE', src: '', alt: '' };
         break;
       default:
         // Should not happen with defined types
@@ -273,20 +273,29 @@
   const saveArticle = async () => {
     isSaving.value = true;
     // QForm handles validation triggering on submit, but manual check can be added
-    // Simple manual check example (QForm rules are preferred)
     if (!article.title || !article.category) {
         $q.notify({ color: 'warning', message: 'Please fill in Title and Category.' });
         isSaving.value = false;
         return;
     }
-    // Add more complex validation for content items if needed here
   
     try {
       let savedArticle;
+      // Create a deep copy of content items, remove 'id' and 'articleId' properties,
+      // and ensure each item has a unique 'order' value
+      const contentWithoutIds = article.content ? article.content.map((item, index) => {
+        const { id, articleId, ...itemWithoutIds } = item as any;
+        // Add explicit order property based on index
+        return {
+          ...itemWithoutIds,
+          order: index // Ensure unique order values
+        };
+      }) : [];
+
       const payload: ArticleInput = {
         title: article.title,
         category: article.category,
-        content: article.content || [] // Ensure content is an array
+        content: contentWithoutIds
       };
   
       if (isEditMode.value && articleId.value) {
@@ -304,7 +313,7 @@
       $q.notify({
         color: 'negative',
         message: `Failed to save article. ${ (error as Error).message || 'Please try again.'}`
-       });
+      });
     } finally {
       isSaving.value = false;
     }

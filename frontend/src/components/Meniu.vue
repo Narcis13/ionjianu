@@ -46,9 +46,9 @@
                     <q-item-label>Atribute structuri</q-item-label>
                   </q-item-section>
                 </q-item>
-                <q-item clickable v-ripple>
+                <q-item clickable v-ripple to="/articles">
                   <q-item-section>
-                    <q-item-label>Persoane</q-item-label>
+                    <q-item-label>Articole</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>

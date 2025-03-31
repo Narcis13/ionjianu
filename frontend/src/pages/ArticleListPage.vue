@@ -64,7 +64,7 @@
   import { ref, onMounted } from 'vue';
   import { useRouter } from 'vue-router';
   import { useQuasar, QTableColumn } from 'quasar';
-  import { ArticleService } from '../services/ArticleService';
+  import { ArticleService } from 'src/services/ArticleService';
   import { Article } from '../types/models';
   
   const $q = useQuasar();
@@ -111,7 +111,8 @@
   };
   
   const deleteArticle = async (id: number) => {
-    $q.loading.show({ message: 'Deleting article...' });
+    console.log(`Deleting article ${id}`); // Add this line to check if the function is being called
+  //  $q.loading.show({ message: 'Deleting article...' });
     try {
       await ArticleService.deleteArticle(id);
       $q.notify({
@@ -129,7 +130,7 @@
         message: 'Failed to delete article. Please try again.',
       });
     } finally {
-      $q.loading.hide();
+     //$q.loading.hide();
     }
   };
   

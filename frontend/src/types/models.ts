@@ -1,18 +1,18 @@
 // src/types/models.ts
 
 export interface ParagraphItem {
-    type: 'paragraph';
+    type: 'PARAGRAPH';
     html: string;
   }
   
   export interface FileItem {
-    type: 'file';
+    type: 'FILE';
     url: string;
     name: string;
   }
   
   export interface ImageItem {
-    type: 'image';
+    type: 'IMAGE';
     src: string;
     alt: string;
   }
