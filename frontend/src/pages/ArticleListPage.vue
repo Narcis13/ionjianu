@@ -1,62 +1,80 @@
 <template>
     <q-page padding>
-      <div class="row justify-between items-center q-mb-md">
-        <h1 class="text-h4">Articles</h1>
-        <q-btn
-          color="primary"
-          icon="add"
-          label="Create Article"
-          :to="{ name: 'ArticleCreate' }"
-        />
-      </div>
-  
-      <q-spinner v-if="isLoading" size="lg" color="primary" class="q-mt-xl" />
-  
-      <q-table
-        v-else-if="articles.length > 0"
-        :rows="articles"
-        :columns="columns"
-        row-key="id"
-        flat
-        bordered
-        class="q-mt-md"
+      <q-tabs
+        v-model="activeTab"
+        class="text-primary q-mb-md"
+        indicator-color="primary"
+        align="left"
       >
-        <template v-slot:body-cell-actions="props">
-          <q-td :props="props">
+        <q-tab name="design" label="Design" />
+        <q-tab name="preview" label="Preview" />
+      </q-tabs>
+
+      <q-tab-panels v-model="activeTab" animated>
+        <q-tab-panel name="design">
+          <div class="row justify-between items-center q-mb-md">
+            <div class="text-h4">Articles</div>
             <q-btn
-              flat
-              dense
-              round
-              icon="visibility"
-              color="info"
-              :to="{ name: 'ArticleView', params: { id: props.row.id } }"
-              class="q-mr-sm"
-            />
-            <q-btn
-              flat
-              dense
-              round
-              icon="edit"
               color="primary"
-              :to="{ name: 'ArticleEdit', params: { id: props.row.id } }"
-              class="q-mr-sm"
+              icon="add"
+              label="Create Article"
+              :to="{ name: 'ArticleCreate' }"
             />
-            <q-btn
-              flat
-              dense
-              round
-              icon="delete"
-              color="negative"
-              @click="confirmDeleteArticle(props.row.id, props.row.title)"
-            />
-          </q-td>
-        </template>
-      </q-table>
-  
-      <q-banner v-else class="bg-grey-3 q-mt-md">
-        No articles found. Create one to get started!
-      </q-banner>
-  
+          </div>
+      
+          <q-spinner v-if="isLoading" size="lg" color="primary" class="q-mt-xl" />
+      
+          <q-table
+            v-else-if="articles.length > 0"
+            :rows="articles"
+            :columns="columns"
+            row-key="id"
+            flat
+            bordered
+            class="q-mt-md"
+          >
+            <template v-slot:body-cell-actions="props">
+              <q-td :props="props">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="visibility"
+                  color="info"
+                  :to="{ name: 'ArticleView', params: { id: props.row.id } }"
+                  class="q-mr-sm"
+                />
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="edit"
+                  color="primary"
+                  :to="{ name: 'ArticleEdit', params: { id: props.row.id } }"
+                  class="q-mr-sm"
+                />
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="delete"
+                  color="negative"
+                  @click="confirmDeleteArticle(props.row.id, props.row.title)"
+                />
+              </q-td>
+            </template>
+          </q-table>
+      
+          <q-banner v-else class="bg-grey-3 q-mt-md">
+            No articles found. Create one to get started!
+          </q-banner>
+        </q-tab-panel>
+
+        <q-tab-panel name="preview">
+          <div class="text-h4 q-mb-md">Preview</div>
+          <BlogView :api-url="`${host}/articles`" />
+        </q-tab-panel>
+      </q-tab-panels>
     </q-page>
   </template>
   
@@ -66,10 +84,13 @@
   import { useQuasar, QTableColumn } from 'quasar';
   import { ArticleService } from 'src/services/ArticleService';
   import { Article } from '../types/models';
+  import BlogView from '../components/BlogView.vue';
+  import { host } from '../config/api';
   
   const $q = useQuasar();
   const router = useRouter(); // Use router if needed, though <router-link>/:to is often simpler
   
+  const activeTab = ref('design'); // Default active tab
   const articles = ref<Article[]>([]);
   const isLoading = ref(false);
   
