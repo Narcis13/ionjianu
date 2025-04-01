@@ -12,7 +12,7 @@ import { extname } from 'path';
     MulterModule.register({
       storage: diskStorage({
         destination: (req, file, cb) => {
-          const uploadPath = './incarcari';
+          const uploadPath = './public/incarcari';
           // Create directory if it doesn't exist
           if (!existsSync(uploadPath)) {
             mkdirSync(uploadPath, { recursive: true });

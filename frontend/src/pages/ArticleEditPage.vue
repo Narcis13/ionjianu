@@ -108,11 +108,67 @@
                       val => /^https?:\/\/.+/.test(val) || 'Must be a valid URL (http/https)'
                       ]"
                   />
+                                   <!-- ADDED Q-Uploader -->
+                 <q-uploader
+                    :url="uploadUrl"
+                    label="Upload File (Max 10MB)"
+                    field-name="file"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.jpg,.jpeg,.png,.gif"
+                    max-file-size="10485760"
+                    auto-upload
+                    max-files="1"
+                    @uploaded="(info) => onFileUploaded(index, info)"
+                    @failed="onUploadFailed"
+                    class="q-mt-md"
+                    style="max-width: 100%"
+                    flat
+                    bordered
+                 >
+                    <template v-slot:list="scope">
+                        <!-- Custom list display to show only the file -->
+                        <q-list separator v-if="scope.files.length > 0">
+                            <q-item v-for="file in scope.files" :key="file.__key">
+                                <q-item-section>
+                                    <q-item-label class="full-width ellipsis">
+                                    {{ file.name }}
+                                    </q-item-label>
+                                    <q-item-label caption>
+                                    Status: {{ file.__status }}
+                                        <q-spinner color="primary" size="xs" v-if="file.__status === 'uploading'" />
+                                    </q-item-label>
+                                    <q-item-label caption>
+                                    {{ file.__sizeLabel }} / {{ file.__progressLabel }}
+                                    </q-item-label>
+                                </q-item-section>
+
+                                <q-item-section v-if="file.__img" thumbnail class="gt-xs">
+                                    <img :src="file.__img.src">
+                                </q-item-section>
+
+                                <q-item-section top side>
+                                    <q-btn
+                                    class="gt-xs"
+                                    size="12px"
+                                    flat
+                                    dense
+                                    round
+                                    icon="delete"
+                                    @click="scope.removeFile(file); clearFileUrl(index)"
+                                    />
+                                </q-item-section>
+                            </q-item>
+                        </q-list>
+                         <div v-else class="text-center q-pa-md text-grey-7">
+                            Drop file here or click to browse
+                        </div>
+                    </template>
+                 </q-uploader>
+                 <!-- END of Q-Uploader -->
               </div>
   
-              <!-- Image Editor -->
-              <div v-else-if="item.type === 'IMAGE'" class="q-gutter-sm q-mt-sm">
-                 <q-input
+                            <!-- Image Editor -->
+               <div v-else-if="item.type === 'IMAGE'" class="q-gutter-sm q-mt-sm">
+                  <q-input
                     filled dense
                     v-model="item.src"
                     label="Image URL *"
@@ -122,6 +178,7 @@
                       val => !!val || 'Image URL is required',
                       val => /^https?:\/\/.+/.test(val) || 'Must be a valid URL (http/https)'
                       ]"
+                    hint="Enter URL directly or upload an image below" 
                   />
                   <q-input
                     filled dense
@@ -131,12 +188,53 @@
                     :rules="[val => !!val || 'Alt text is required for accessibility']"
                  />
                  <img
-                   v-if="item.src"
+                   v-if="item.src && /^https?:\/\/.+/.test(item.src)" 
                    :src="item.src"
                    :alt="item.alt || 'Image Preview'"
                    class="q-mt-sm"
                    style="max-width: 200px; max-height: 150px; display: block; border: 1px solid #ccc;"
                   />
+
+                 <!-- ADDED Q-Uploader for Images -->
+                 <q-uploader
+                    :url="uploadUrl"
+                    label="Upload Image (Max 10MB)"
+                    field-name="file"
+                    accept="image/*,.jpeg,.jpg,.png,.gif,.webp,.svg" 
+                    max-file-size="10485760"
+                    auto-upload
+                    max-files="1"
+                    @uploaded="(info) => onImageUploaded(index, info)" 
+                    @failed="onUploadFailed" 
+                    class="q-mt-md"
+                    style="max-width: 100%"
+                    flat
+                    bordered
+                 >
+                    <template v-slot:list="scope">
+                        <q-list separator v-if="scope.files.length > 0">
+                            <q-item v-for="file in scope.files" :key="file.__key">
+                                <q-item-section>
+                                    <q-item-label class="full-width ellipsis"> {{ file.name }} </q-item-label>
+                                    <q-item-label caption> Status: {{ file.__status }}
+                                        <q-spinner color="primary" size="xs" v-if="file.__status === 'uploading'" />
+                                    </q-item-label>
+                                    <q-item-label caption> {{ file.__sizeLabel }} / {{ file.__progressLabel }} </q-item-label>
+                                </q-item-section>
+                                <q-item-section v-if="file.__img" thumbnail class="gt-xs">
+                                    <img :src="file.__img.src"> <!-- Uploader's internal preview -->
+                                </q-item-section>
+                                <q-item-section top side>
+                                    <q-btn class="gt-xs" size="12px" flat dense round icon="delete"
+                                        @click="scope.removeFile(file); clearImageUrl(index)" /> <!-- NEW clear handler -->
+                                </q-item-section>
+                            </q-item>
+                        </q-list>
+                         <div v-else class="text-center q-pa-md text-grey-7"> Drop image here or click to browse </div>
+                    </template>
+                 </q-uploader>
+                 <!-- END of Q-Uploader for Images -->
+
               </div>
             </q-card-section>
           </q-card>
@@ -175,6 +273,7 @@
   import { useRouter } from 'vue-router';
   import { useQuasar, QForm } from 'quasar';
   import { ArticleService } from 'src/services/ArticleService';
+  import { host } from '../config/api';
   import { ArticleInput, ContentItem, ParagraphItem, FileItem, ImageItem } from 'src/types/models';
   
   interface Props {
@@ -191,7 +290,8 @@
     category: '',
     content: [],
   });
-  
+  const API_BASE_URL = host; // Use env variable
+const uploadUrl = computed(() => `${API_BASE_URL}/upload/single`); // Make it computed
   const isLoading = ref(false);
   const isSaving = ref(false);
   const errorLoading = ref<string | null>(null);
@@ -327,7 +427,121 @@
        Object.assign(article, { title: '', category: '', content: [] });
      }
   });
-  
+  // --- Uploader Event Handlers ---
+
+// Type the 'info' parameter for better DX
+// info has structure { files: File[], xhr: XMLHttpRequest }
+const onFileUploaded = (index: number, info: { files: File[], xhr: XMLHttpRequest }) => {
+  try {
+    const response = JSON.parse(info.xhr.responseText);
+    const fileUrl = response?.url; // Access the URL from backend response
+
+    if (fileUrl && article.content && article.content[index]?.type === 'FILE') {
+        // Explicitly cast to FileItem if needed, or ensure type guard
+        const fileItem = article.content[index] as FileItem;
+        fileItem.url = fileUrl;
+
+      // Optionally prefill link text with original file name if empty
+      if (!fileItem.name && info.files.length > 0) {
+        fileItem.name = info.files[0].name.split('.').slice(0, -1).join('.'); // Remove extension
+      }
+
+      $q.notify({
+        color: 'positive',
+        message: `File ${info.files[0].name} uploaded successfully. URL updated.`,
+        icon: 'check',
+      });
+
+      // Optional: remove the file from uploader display after successful upload handled
+      // This requires accessing the uploader instance via ref, which is tricky in v-for
+      // Simpler to let the user remove it manually via the uploader's UI if needed.
+
+    } else {
+       console.error('Failed to parse URL from upload response or item type mismatch:', response);
+       $q.notify({ color: 'negative', message: 'Error processing upload response.' });
+    }
+  } catch (e) {
+    console.error('Error parsing upload response:', e, info.xhr.responseText);
+    $q.notify({ color: 'negative', message: 'Failed to read server response after upload.' });
+  }
+};
+
+const onUploadFailed = (info: { files: File[], xhr: XMLHttpRequest }) => {
+    // Check for specific error messages from backend if available
+    let errorMsg = 'File upload failed.';
+    try {
+        const response = JSON.parse(info.xhr.responseText);
+        if (response?.message) {
+            errorMsg = `File upload failed: ${response.message}`;
+        }
+    } catch (e) {
+        // Ignore if response is not JSON
+    }
+
+    $q.notify({
+        color: 'negative',
+        message: errorMsg,
+        icon: 'warning',
+    });
+};
+
+// Optional: Function to clear URL if user removes file from uploader
+const clearFileUrl = (index: number) => {
+    if (article.content && article.content[index]?.type === 'FILE') {
+        const fileItem = article.content[index] as FileItem;
+        // Only clear if maybe it matches a filename pattern? Or just always clear?
+        // Let's clear it. User can re-paste if needed.
+        fileItem.url = '';
+         $q.notify({
+            color: 'info',
+            message: 'File removed from uploader. URL cleared.',
+            icon: 'info',
+            position: 'top-right' // Avoid covering uploader
+        });
+    }
+};
+
+// NEW Handler for IMAGE upload
+const onImageUploaded = (index: number, info: { files: File[], xhr: XMLHttpRequest }) => {
+  try {
+    const response = JSON.parse(info.xhr.responseText);
+    const imageUrl = response?.url; // Get URL from backend response
+
+    if (imageUrl && article.content && article.content[index]?.type === 'IMAGE') {
+        // Cast to ImageItem for type safety
+        const imageItem = article.content[index] as ImageItem;
+        imageItem.src = imageUrl; // Update the 'src' field
+
+      // We don't automatically fill alt text here, it should be descriptive
+      // if (!imageItem.alt && info.files.length > 0) {
+      //   imageItem.alt = info.files[0].name.split('.').slice(0, -1).join('.'); // Avoid doing this
+      // }
+
+      $q.notify({
+        color: 'positive',
+        message: `Image ${info.files[0].name} uploaded successfully. URL updated.`,
+        icon: 'check',
+      });
+
+    } else {
+       console.error('Failed to parse URL from upload response or item type mismatch for IMAGE:', response);
+       $q.notify({ color: 'negative', message: 'Error processing image upload response.' });
+    }
+  } catch (e) {
+    console.error('Error parsing image upload response:', e, info.xhr.responseText);
+    $q.notify({ color: 'negative', message: 'Failed to read server response after image upload.' });
+  }
+};
+
+// NEW Handler to clear IMAGE URL
+const clearImageUrl = (index: number) => {
+    if (article.content && article.content[index]?.type === 'IMAGE') {
+        (article.content[index] as ImageItem).src = ''; // Clear the src field
+         $q.notify({
+            color: 'info', message: 'Image removed from uploader. URL cleared.', icon: 'info', position: 'top-right'
+        });
+    }
+};
   </script>
   
   <style scoped>

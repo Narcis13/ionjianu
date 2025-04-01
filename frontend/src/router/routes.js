@@ -15,7 +15,7 @@ const routes = [
       {
         path: 'articles/new',
         name: 'ArticleCreate',
-        component: () => import('pages/ArticleEditPage.vue'),
+        component: () => import('src/pages/ArticleEditPage.vue'),
       },
       {
         path: 'articles/:id',
@@ -26,7 +26,7 @@ const routes = [
       {
         path: 'articles/:id/edit',
         name: 'ArticleEdit',
-        component: () => import('pages/ArticleEditPage.vue'),
+        component: () => import('src/pages/ArticleEditPage.vue'),
         props: true, // Pass route params as props
       },
     ]
