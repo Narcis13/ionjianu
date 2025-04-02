@@ -24,9 +24,9 @@ export interface ParagraphItem {
     id: number;
     title: string;
     category: string;
+    updatedAt: string; // Added updatedAt property
     content: ContentItem[];
   }
   
   // For creating/editing, ID might not be present initially
   export type ArticleInput = Omit<Article, 'id'> & { id?: number };
-  

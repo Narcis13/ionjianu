@@ -1,5 +1,6 @@
 <template>
   <div class="blog-container">
+    <h3>Aniversari</h3>
     <!-- Loading state -->
     <div v-if="isLoading" class="loading">
       <div class="spinner"></div>
@@ -73,9 +74,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
-import { Article } from '../types/models';
+import { ref, onMounted, watch ,defineProps} from 'vue';
 
+ interface ParagraphItem {
+    type: 'PARAGRAPH';
+    html: string;
+  }
+  
+   interface FileItem {
+    type: 'FILE';
+    url: string;
+    name: string;
+  }
+  
+   interface ImageItem {
+    type: 'IMAGE';
+    src: string;
+    alt: string;
+  }
+type ContentItem = ParagraphItem | FileItem | ImageItem;
+interface Article {
+    id: number;
+    title: string;
+    category: string;
+    updatedAt: string; // Added updatedAt property
+    content: ContentItem[];
+  }
 const props = defineProps<{
   apiUrl: string
 }>();
@@ -131,7 +155,12 @@ onMounted(() => {
   padding: 20px;
   color: #333;
 }
-
+h3 {
+  font-size: 1.875rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  margin-top: 2rem; /* Add more space above the title */
+}
 /* Loading state */
 .loading {
   display: flex;
