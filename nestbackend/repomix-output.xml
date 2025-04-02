@@ -43,1088 +43,278 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-auth/
-  guards/
-    jwt-auth.guard.ts
-    local-auth.guard.ts
-  strategies/
-    jwt.strategy.ts
-    local.strategy.ts
-  auth.controller.ts
-  auth.module.ts
-  auth.service.ts
-database/
-  database.module.ts
-  database.service.spec.ts
-  database.service.ts
-email/
-  email.controller.ts
-  email.module.ts
-  email.service.ts
-features/
-  features.controller.ts
-  features.module.ts
-  features.service.ts
-  prisma-schema-parser.service.ts
-file-upload/
-  file-upload.controller.spec.ts
-  file-upload.controller.ts
-  file-upload.module.ts
-  file-upload.service.spec.ts
-  file-upload.service.ts
-product/
-  product.controller.spec.ts
-  product.controller.ts
-  product.module.ts
-  product.service.spec.ts
-  product.service.ts
-schema/
-  structure/
-    structure.controller.ts
-    structure.module.ts
-    structure.service.ts
-  structure-attributes/
-    structure-attributes.controller.ts
-    structure-attributes.module.ts
-    structure-attributes.service.ts
-users/
+articles/
   dto/
-    create-user.dto.ts
-  users.controller.spec.ts
-  users.controller.ts
-  users.module.ts
-  users.service.ts
-utils/
-  timezone.ts
-app.controller.spec.ts
-app.controller.ts
-app.module.ts
-app.service.ts
-main.ts
-schema.prisma
+    filter-article.dto.ts
+  articles.controller.ts
+  articles.module.ts
+  articles.service.ts
+  filtering.service.ts
+structure/
+  structure.controller.ts
+  structure.module.ts
+  structure.service.ts
+structure-attributes/
+  dto/
+    filter-structure-attribute.dto.ts
+  filter.service.ts
+  structure-attributes.controller.ts
+  structure-attributes.module.ts
+  structure-attributes.service.ts
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path="auth/guards/jwt-auth.guard.ts">
-import { Injectable } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+<file path="articles/dto/filter-article.dto.ts">
+import { IsOptional, IsString, IsIn } from 'class-validator';
+import { Transform } from 'class-transformer';
 
-@Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {}
-</file>
+export class FilterArticleDto {
+  @IsOptional()
+  @IsString()
+  category?: string;
 
-<file path="auth/guards/local-auth.guard.ts">
-import { Injectable } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+  // Sorting parameters
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
 
-@Injectable()
-export class LocalAuthGuard extends AuthGuard('local') {}
-</file>
-
-<file path="auth/strategies/jwt.strategy.ts">
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PassportStrategy } from '@nestjs/passport';
-import { Injectable } from '@nestjs/common';
-
-@Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
-    super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
-      secretOrKey: 'marele_meu_secret', // Use same secret as in AuthModule
-    });
-  }
-
-  async validate(payload: any) {
-    return { id: payload.sub, username: payload.username };
-  }
+  @IsOptional()
+  @IsString()
+  @IsIn(['asc', 'desc', 'ASC', 'DESC'])
+  @Transform(({ value }) => value?.toLowerCase())
+  sortOrder?: 'asc' | 'desc';
 }
 </file>
 
-<file path="auth/strategies/local.strategy.ts">
-import { Strategy } from 'passport-local';
-import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { AuthService } from '../auth.service';
-
-@Injectable()
-export class LocalStrategy extends PassportStrategy(Strategy) {
-  constructor(private authService: AuthService) {
-    super();
-  }
-
-  async validate(username: string, password: string): Promise<any> {
-    const user = await this.authService.validateUser(username, password);
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-    return user;
-  }
-}
-</file>
-
-<file path="auth/auth.controller.ts">
-import { Controller, Post, UseGuards, Request, Body } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { LocalAuthGuard } from './guards/local-auth.guard';
-import { CreateUserDto } from '../users/dto/create-user.dto';
-import { UsersService } from '../users/users.service';
-
-@Controller('auth')
-export class AuthController {
-  constructor(
-    private authService: AuthService,
-    private usersService: UsersService,
-  ) {}
-
-  @UseGuards(LocalAuthGuard)
-  @Post('login')
-  async login(@Request() req) {
-    return this.authService.login(req.user);
-  }
-
-  @Post('register')
-  async register(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
-  }
-}
-</file>
-
-<file path="auth/auth.module.ts">
-import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
-import { UsersModule } from '../users/users.module';
-import { LocalStrategy } from './strategies/local.strategy';
-import { JwtStrategy } from './strategies/jwt.strategy';
-
-@Module({
-  imports: [
-    UsersModule,
-    PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '1h' },
-    }),
-  ],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
-  controllers: [AuthController],
-  exports: [AuthService],
-})
-export class AuthModule {}
-</file>
-
-<file path="auth/auth.service.ts">
-import { Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service';
-import * as bcrypt from 'bcrypt';
-
-@Injectable()
-export class AuthService {
-  constructor(
-    private usersService: UsersService,
-    private jwtService: JwtService,
-  ) {}
-
-  async validateUser(username: string, password: string): Promise<any> {
-    const user = await this.usersService.findByUsername(username);
-    if (user && await bcrypt.compare(password, user.password)) {
-      const { password, ...result } = user;
-      return result;
-    }
-    return null;
-  }
-
-  async login(user: any) {
-    const payload = { username: user.username, sub: user.id };
-    const userData = await this.usersService.findByUsername(user.username);
-    if (!userData) {
-      throw new Error('User not found');
-    }
-    const { password, ...user_profile } = userData;
-    return {
-      access_token: this.jwtService.sign(payload),
-      user_profile
-    };
-  }
-}
-</file>
-
-<file path="database/database.module.ts">
-import { Global, Module } from '@nestjs/common';
-import { DatabaseService } from './database.service';
-@Global()
-@Module({
-  providers: [DatabaseService],
-  exports: [DatabaseService],
-})
-export class DatabaseModule {}
-</file>
-
-<file path="database/database.service.spec.ts">
-import { Test, TestingModule } from '@nestjs/testing';
-import { DatabaseService } from './database.service';
-
-describe('DatabaseService', () => {
-  let service: DatabaseService;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [DatabaseService],
-    }).compile();
-
-    service = module.get<DatabaseService>(DatabaseService);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-});
-</file>
-
-<file path="database/database.service.ts">
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-
-@Injectable()
-export class DatabaseService extends PrismaClient implements OnModuleInit{
-
-    
-    async onModuleInit() {
-        await this.$connect();
-    }
-    
-
-}
-</file>
-
-<file path="email/email.controller.ts">
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
-import { EmailService } from './email.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // Adjust path as needed
-
-// Define a DTO for email requests
-class SendEmailDto {
-  to: string | string[];
-  subject: string;
-  text?: string;
-  html?: string;
-  attachments?: any[];
-}
-
-@Controller('email')
-export class EmailController {
-  constructor(private readonly emailService: EmailService) {}
-
-  @Post('send')
-  @UseGuards(JwtAuthGuard) // Add authentication guard for security
-  async sendEmail(@Body() emailDto: SendEmailDto) {
-    return this.emailService.sendEmail(
-      emailDto.to,
-      emailDto.subject,
-      emailDto.text,
-      emailDto.html,
-      emailDto.attachments,
-    );
-  }
-}
-</file>
-
-<file path="email/email.module.ts">
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { EmailService } from './email.service';
-import { EmailController } from './email.controller';
-
-@Module({
-  imports: [ConfigModule],
-  controllers: [EmailController],
-  providers: [EmailService],
-  exports: [EmailService], // Export the service so it can be injected elsewhere
-})
-export class EmailModule {}
-</file>
-
-<file path="email/email.service.ts">
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-
-@Injectable()
-export class EmailService {
-  private transporter: nodemailer.Transporter;
-
-  constructor(private configService: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get('SMTP_HOST'),
-      port: this.configService.get('SMTP_PORT'),
-      secure: this.configService.get('SMTP_PORT') === 465, // true for 465, false for other ports
-      auth: {
-        user: this.configService.get('SMTP_USER'),
-        pass: this.configService.get('SMTP_PASSWORD'),
-      },
-    });
-  }
-
-  async sendEmail(
-    to: string | string[],
-    subject: string,
-    text?: string,
-    html?: string,
-    attachments?: any[],
-  ) {
-    const mailOptions = {
-      from: this.configService.get('SMTP_FROM'),
-      to: Array.isArray(to) ? to.join(',') : to,
-      subject,
-      text,
-      html,
-      attachments,
-    };
-
-    try {
-      const info = await this.transporter.sendMail(mailOptions);
-      return {
-        success: true,
-        messageId: info.messageId,
-      };
-    } catch (error) {
-      throw new Error(`Failed to send email: ${error.message}`);
-    }
-  }
-}
-</file>
-
-<file path="features/features.controller.ts">
-import { Controller, Get, Param, NotFoundException } from '@nestjs/common';
-import { FeaturesService } from './features.service';
-
-@Controller('features')
-export class FeaturesController {
-  constructor(private readonly featuresService: FeaturesService) {}
-
-  @Get('models/:modelName')
-  async getModelMetadata(@Param('modelName') modelName: string) {
-    try {
-      return await this.featuresService.getModelMetadata(modelName);
-    } catch (error) {
-      throw new NotFoundException(`Model ${modelName} not found`);
-    }
-  }
-
-  @Get('models')
-  async getAllModels() {
-    return await this.featuresService.getAllModels();
-  }
-
-  @Get('prisma/models')
-  async prismaAllModels() {
-    return await this.featuresService.prismaAllModels();
-  }
-
-  @Get('prisma/models/:modelName')
-  async prismaModel(@Param('modelName') modelName: string) {
-    return await this.featuresService.prismaModel(modelName);
-  }
-
-  @Get('prisma/modelenums')
-  async prismaEnums() {
-    return await this.featuresService.prismaEnums();
-  }
-
-}
-</file>
-
-<file path="features/features.module.ts">
-import { Module } from '@nestjs/common';
-import { StructureModule } from '../schema/structure/structure.module';
-import { FeaturesController } from './features.controller';
-import { FeaturesService } from './features.service';
-import { PrismaSchemaParserService } from './prisma-schema-parser.service';
-import { StructureAttributesModule } from 'src/schema/structure-attributes/structure-attributes.module';
-
-@Module({
-  imports: [
-    StructureModule,
-    StructureAttributesModule
-  ],
-  controllers: [FeaturesController],
-  providers: [FeaturesService,PrismaSchemaParserService],
-  exports: [
-    StructureModule,
-    StructureAttributesModule
-  ]
-})
-export class FeaturesModule {}
-</file>
-
-<file path="features/features.service.ts">
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-import { PrismaSchemaParserService } from './prisma-schema-parser.service';
-export interface TableColumn {
-  name: string;
-  type: string;
-  isNullable: string;
-  keyType: string;
-  defaultValue: string | null;
-  extra: string;
-}
-
-export interface TableInfo {
-  name: string;
-  fieldCount: number;
-}
-
-@Injectable()
-export class FeaturesService implements OnModuleInit{
-  constructor(private prismaSchemaParserService: PrismaSchemaParserService) {}
-
-  async onModuleInit() {
-    await this.prismaSchemaParserService.parseSchema();
-  }
-  
-  private prisma = new PrismaClient();
-
-  async getModelMetadata(modelName: string) {
-    // Get table information from the database
-    const tableInfo = await this.prisma.$queryRaw<TableColumn[]>`
-      SELECT 
-        COLUMN_NAME as name,
-        DATA_TYPE as type,
-        IS_NULLABLE as isNullable,
-        COLUMN_KEY as keyType,
-        COLUMN_DEFAULT as defaultValue,
-        EXTRA as extra
-      FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_NAME = ${modelName}
-    `;
-
-    if (!tableInfo || (Array.isArray(tableInfo) && tableInfo.length === 0)) {
-      throw new Error(`Model ${modelName} not found`);
-    }
-
-    // Format the metadata
-    return {
-      name: modelName,
-      fields: tableInfo.map(field => ({
-        name: field.name,
-        type: field.type,
-        isRequired: field.isNullable === 'NO',
-        isUnique: field.keyType === 'UNI',
-        isId: field.keyType === 'PRI',
-        default: field.defaultValue,
-        extra: field.extra
-      }))
-    };
-  }
-
-  async getAllModels() {
-    const tables = await this.prisma.$queryRaw<TableInfo[]>`
-      SELECT 
-        TABLE_NAME as name,
-        (
-          SELECT COUNT(*) 
-          FROM INFORMATION_SCHEMA.COLUMNS 
-          WHERE TABLE_NAME = TABLES.TABLE_NAME
-        ) as fieldCount
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_SCHEMA = DATABASE()
-    `;
-
-    // Convert BigInt to Number before returning
-    return tables.map(table => ({
-      name: table.name,
-      fieldCount: Number(table.fieldCount)
-    }));
-  }
-
-  async prismaAllModels(): Promise<any> {
-   // await this.prismaSchemaParserService.parseSchema();
-    
-    // Get all models
-    const models = this.prismaSchemaParserService.getModels();
-    return models;
-
-  }
-
-   prismaModel(modelName: string): any {
-   return this.prismaSchemaParserService.getModelByName(modelName)
-  }
-
-   prismaEnums(): any {
-    return this.prismaSchemaParserService.getEnums()
-   }
-}
-</file>
-
-<file path="features/prisma-schema-parser.service.ts">
-import { Injectable } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
-
-interface PrismaProperty {
-  name: string;
-  type: string;
-  isRequired: boolean;
-  isList: boolean;
-  isId: boolean;
-  isUnique: boolean;
-  hasDefault: boolean;
-  defaultValue?: any;
-  isRelation: boolean;
-  relationName?: string;
-  relationFields?: string[];
-  relationReferences?: string[];
-  dbAttributes?: string[];
-  isEnum: boolean; // Add this new property
-}
-
-interface PrismaModel {
-  name: string;
-  properties: PrismaProperty[];
-}
-
-interface PrismaEnum {
-  name: string;
-  values: string[];
-}
-
-@Injectable()
-export class PrismaSchemaParserService {
-  private schemaContent: string;
-  private models: PrismaModel[] = [];
-  private enums: PrismaEnum[] = [];
-
-  constructor() {}
-
-  /**
-   * Loads and parses the schema.prisma file
-   * @param schemaPath Path to the schema.prisma file
-   */
-  async parseSchema(schemaPath?: string): Promise<void> {
-    // Default path if not provided
-    const filePath = schemaPath || path.join(process.cwd(), 'prisma', 'schema.prisma');
-    
-    try {
-      this.schemaContent = fs.readFileSync(filePath, 'utf8');
-      this.parseContent();
-    } catch (error) {
-      throw new Error(`Failed to parse schema file: ${error.message}`);
-    }
-  }
-
-  /**
-   * Parses the content of the schema file to extract models and enums
-   */
-  private parseContent(): void {
-    this.models = [];
-    this.enums = [];
-
-    // Extract enums first
-    const enumRegex = /enum\s+(\w+)\s+{([^}]*)}/gs;
-    let enumMatch;
-    while ((enumMatch = enumRegex.exec(this.schemaContent)) !== null) {
-      const enumName = enumMatch[1];
-      const enumBody = enumMatch[2];
-      
-      const values = enumBody
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0 && !line.startsWith('//'));
-      
-      this.enums.push({
-        name: enumName,
-        values,
-      });
-    }
-
-    // Then extract models
-    const modelRegex = /model\s+(\w+)\s+{([^}]*)}/gs;
-    let modelMatch;
-    while ((modelMatch = modelRegex.exec(this.schemaContent)) !== null) {
-      const modelName = modelMatch[1];
-      const modelBody = modelMatch[2];
-      
-      const properties = this.parseModelProperties(modelBody);
-      
-      this.models.push({
-        name: modelName,
-        properties,
-      });
-    }
-  }
-
-  /**
-   * Parses the properties of a model
-   * @param modelBody The body content of a model definition
-   * @returns Array of parsed properties
-   */
-  private parseModelProperties(modelBody: string): PrismaProperty[] {
-    const properties: PrismaProperty[] = [];
-    const lines = modelBody.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-    for (const line of lines) {
-      // Skip lines that don't define properties (like comments)
-      if (line.startsWith('//') || line.startsWith('@@')) continue;
-      
-      const parts = line.split(/\s+/);
-      if (parts.length < 2) continue;
-
-      const [name, type, ...modifiers] = parts;
-      
-      // Remove any array brackets for type checking
-      const baseType = type.replace('[]', '');
-      
-      // Basic property info
-      const property: PrismaProperty = {
-        name,
-        type,
-        isRequired: !line.includes('?'),
-        isList: line.includes('[]'),
-        isId: modifiers.includes('@id'),
-        isUnique: modifiers.includes('@unique'),
-        hasDefault: line.includes('@default'),
-        isRelation: false,
-        isEnum: this.isEnum(baseType), // Check if type is an enum
-      };
-
-      // Extract default value if present
-      if (property.hasDefault) {
-        const defaultMatch = line.match(/@default\(([^)]*)\)/);
-        if (defaultMatch) {
-          property.defaultValue = defaultMatch[1];
-        }
-      }
-
-      // Check if it's a relation
-      if (line.includes('@relation')) {
-        property.isRelation = true;
-        
-        // Extract relation fields and references
-        const relationMatch = line.match(/@relation\(([^)]*)\)/);
-        if (relationMatch) {
-          const relationContent = relationMatch[1];
-          
-          // Extract field names
-          const fieldsMatch = relationContent.match(/fields:\s*\[(.*?)\]/);
-          if (fieldsMatch) {
-            property.relationFields = fieldsMatch[1]
-              .split(',')
-              .map(f => f.trim().replace(/"/g, ''));
-          }
-          
-          // Extract reference fields
-          const referencesMatch = relationContent.match(/references:\s*\[(.*?)\]/);
-          if (referencesMatch) {
-            property.relationReferences = referencesMatch[1]
-              .split(',')
-              .map(f => f.trim().replace(/"/g, ''));
-          }
-          
-          // Extract relation name if present
-          const nameMatch = relationContent.match(/name:\s*"([^"]*)"/);
-          if (nameMatch) {
-            property.relationName = nameMatch[1];
-          }
-        }
-      }
-
-      // Extract DB-specific attributes
-      const dbMatch = line.match(/@db\.([^(\s)]*)(\([^)]*\))?/);
-      if (dbMatch) {
-        property.dbAttributes = [dbMatch[0]];
-      }
-
-      properties.push(property);
-    }
-
-    return properties;
-  }
-
-  /**
-   * Gets all parsed models
-   * @returns Array of parsed models
-   */
-  getModels(): PrismaModel[] {
-    return this.models;
-  }
-
-  /**
-   * Gets a specific model by name
-   * @param modelName Name of the model to retrieve
-   * @returns The model or undefined if not found
-   */
-  getModelByName(modelName: string): PrismaModel | undefined {
-    return this.models.find(model => model.name === modelName);
-  }
-
-  /**
-   * Gets all parsed enums
-   * @returns Array of parsed enums
-   */
-  getEnums(): PrismaEnum[] {
-    return this.enums;
-  }
-
-  /**
-   * Gets a specific enum by name
-   * @param enumName Name of the enum to retrieve
-   * @returns The enum or undefined if not found
-   */
-  getEnumByName(enumName: string): PrismaEnum | undefined {
-    return this.enums.find(enum_ => enum_.name === enumName);
-  }
-
-  /**
-   * Checks if a given type is an enum
-   * @param typeName Name of the type to check
-   * @returns Boolean indicating if the type is an enum
-   */
-  isEnum(typeName: string): boolean {
-    return this.enums.some(enum_ => enum_.name === typeName);
-  }
-}
-</file>
-
-<file path="file-upload/file-upload.controller.spec.ts">
-import { Test, TestingModule } from '@nestjs/testing';
-import { FileUploadController } from './file-upload.controller';
-
-describe('FileUploadController', () => {
-  let controller: FileUploadController;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [FileUploadController],
-    }).compile();
-
-    controller = module.get<FileUploadController>(FileUploadController);
-  });
-
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-});
-</file>
-
-<file path="file-upload/file-upload.controller.ts">
-// file-upload/file-upload.controller.ts
-import {
-    Controller,
-    Post,
-    UseInterceptors,
-    UploadedFile,
-    UploadedFiles,
-    BadRequestException,
-    Param,
-    Delete,
-    Res,
-    Get,
-    Req,
-  } from '@nestjs/common';
-  import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-  import { Express } from 'express';
-  import { FileUploadService } from './file-upload.service';
-  import { Response } from 'express';
-  import * as path from 'path';
-  
-  @Controller('upload')
-  export class FileUploadController {
-    constructor(private readonly fileUploadService: FileUploadService) {}
-  
-    @Post('single')
-    @UseInterceptors(FileInterceptor('file'))
-    async uploadFile(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
-      if (!file) {
-        throw new BadRequestException('No file uploaded');
-      }
-  
-      return {
-        originalName: file.originalname,
-        fileName: file.filename,
-        size: file.size,
-        path: file.path,
-        url: this.fileUploadService.getFileUrl(file.filename, req),
-      };
-    }
-  
-    @Post('multiple')
-    @UseInterceptors(FilesInterceptor('files', 10)) // Maximum 10 files
-    async uploadMultipleFiles(@UploadedFiles() files: Express.Multer.File[], @Req() req: any) {
-      if (!files || files.length === 0) {
-        throw new BadRequestException('No files uploaded');
-      }
-  
-      return files.map(file => ({
-        originalName: file.originalname,
-        fileName: file.filename,
-        size: file.size,
-        path: file.path,
-        url: this.fileUploadService.getFileUrl(file.filename, req),
-      }));
-    }
-  
-    @Delete(':filename')
-    async deleteFile(@Param('filename') filename: string) {
-      const deleted = await this.fileUploadService.deleteFile(filename);
-      if (!deleted) {
-        throw new BadRequestException('File could not be deleted');
-      }
-      return { message: 'File deleted successfully' };
-    }
-  
-    // Serve files (static file server)
-    @Get(':filename')
-    async getFile(@Param('filename') filename: string, @Res() res: Response) {
-      return res.sendFile(filename, { root: './incarcari' });
-    }
-  }
-</file>
-
-<file path="file-upload/file-upload.module.ts">
-// file-upload/file-upload.module.ts
-import { Module } from '@nestjs/common';
-import { FileUploadController } from './file-upload.controller';
-import { FileUploadService } from './file-upload.service';
-import { MulterModule } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { existsSync, mkdirSync } from 'fs';
-import { extname } from 'path';
-
-@Module({
-  imports: [
-    MulterModule.register({
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const uploadPath = './incarcari';
-          // Create directory if it doesn't exist
-          if (!existsSync(uploadPath)) {
-            mkdirSync(uploadPath, { recursive: true });
-          }
-          cb(null, uploadPath);
-        },
-        filename: (req, file, cb) => {
-          // Generate unique filename
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          const filename = `${file.originalname.split(ext)[0]}-${uniqueSuffix}${ext}`;
-          cb(null, filename);
-        },
-      }),
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit (adjust as needed)
-      },
-    }),
-  ],
-  controllers: [FileUploadController],
-  providers: [FileUploadService],
-  exports: [FileUploadService],
-})
-export class FileUploadModule {}
-</file>
-
-<file path="file-upload/file-upload.service.spec.ts">
-import { Test, TestingModule } from '@nestjs/testing';
-import { FileUploadService } from './file-upload.service';
-
-describe('FileUploadService', () => {
-  let service: FileUploadService;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [FileUploadService],
-    }).compile();
-
-    service = module.get<FileUploadService>(FileUploadService);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-});
-</file>
-
-<file path="file-upload/file-upload.service.ts">
-// file-upload/file-upload.service.ts
-import { Injectable } from '@nestjs/common';
-import { unlinkSync } from 'fs';
-
-@Injectable()
-export class FileUploadService {
-  /**
-   * Deletes a file from the uploads directory
-   * @param filePath Path to the file relative to the uploads directory
-   * @returns true if file deleted successfully, false otherwise
-   */
-  async deleteFile(filePath: string): Promise<boolean> {
-    try {
-      unlinkSync(`./incarcari/${filePath}`);
-      return true;
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Gets the full URL for a file
-   * @param fileName Filename stored in the database
-   * @param req Express request object
-   * @returns Full URL to access the file
-   */
-  getFileUrl(fileName: string, req: any): string {
-    // You can customize this based on your application setup
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    return `${baseUrl}/incarcari/${fileName}`;
-  }
-}
-</file>
-
-<file path="product/product.controller.spec.ts">
-import { Test, TestingModule } from '@nestjs/testing';
-import { ProductController } from './product.controller';
-import { ProductService } from './product.service';
-
-describe('ProductController', () => {
-  let controller: ProductController;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [ProductController],
-      providers: [ProductService],
-    }).compile();
-
-    controller = module.get<ProductController>(ProductController);
-  });
-
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-});
-</file>
-
-<file path="product/product.controller.ts">
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { ProductService } from './product.service';
+<file path="articles/articles.controller.ts">
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { ArticlesService } from './articles.service';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from '@nestjs/passport';
-
-
-@Controller('product')
-export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+import { FilterArticleDto } from './dto/filter-article.dto';
+@Controller('articles')
+export class ArticlesController {
+  constructor(private readonly articlesService: ArticlesService) {}
 
   @Post()
-  create(@Body() createProductDto: Prisma.ProductCreateInput) {
-    return this.productService.create(createProductDto);
+  @UseGuards(AuthGuard('jwt'))
+  create(@Body() createArticleDto: Prisma.ArticleCreateInput) {
+    return this.articlesService.create(createArticleDto);
   }
 
   @Get()
-  @UseGuards(AuthGuard('jwt'))
-  findAll() {
-    return this.productService.findAll();
+  findAll(@Query() filters: FilterArticleDto) {
+    return this.articlesService.findAll(filters);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.productService.findOne(+id);
+    return this.articlesService.findOne(+id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProductDto: Prisma.ProductUpdateInput) {
-    return this.productService.update(+id, updateProductDto);
+  @UseGuards(AuthGuard('jwt'))
+  update(@Param('id') id: string, @Body() updateArticleDto: Prisma.ArticleUpdateInput) {
+    return this.articlesService.update(+id, updateArticleDto);
   }
 
   @Delete(':id')
+  @UseGuards(AuthGuard('jwt'))
   remove(@Param('id') id: string) {
-    return this.productService.remove(+id);
+    return this.articlesService.remove(+id);
   }
 }
 </file>
 
-<file path="product/product.module.ts">
+<file path="articles/articles.module.ts">
 import { Module } from '@nestjs/common';
-import { ProductService } from './product.service';
-import { ProductController } from './product.controller';
+import { ArticlesController } from './articles.controller';
+import { ArticlesService } from './articles.service';
+import { FilteringService } from './filtering.service';
 
 @Module({
-  controllers: [ProductController],
-  providers: [ProductService],
+
+  controllers: [ArticlesController],
+  providers: [ArticlesService, FilteringService]
+ 
 })
-export class ProductModule {}
+export class ArticlesModule {}
 </file>
 
-<file path="product/product.service.spec.ts">
-import { Test, TestingModule } from '@nestjs/testing';
-import { ProductService } from './product.service';
-
-describe('ProductService', () => {
-  let service: ProductService;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [ProductService],
-    }).compile();
-
-    service = module.get<ProductService>(ProductService);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-});
-</file>
-
-<file path="product/product.service.ts">
+<file path="articles/articles.service.ts">
 import { Injectable } from '@nestjs/common';
+import { DatabaseService } from '../../database/database.service';
 import { Prisma } from '@prisma/client';
-import { DatabaseService } from 'src/database/database.service';
-
+import { FilteringService } from './filtering.service';
+import { FilterArticleDto } from './dto/filter-article.dto';
 
 @Injectable()
-export class ProductService {
-  constructor(private readonly databaseService: DatabaseService) {}
+export class ArticlesService {
+  constructor(private prisma: DatabaseService, private filteringService:FilteringService) {}
+  
+  private filterConfig = {
+    category: { field: 'category', operator: 'equals' },  
+  }
 
-  async create(createProductDto: Prisma.ProductCreateInput) {
-    this.databaseService.$queryRaw`SELECT 1`;
-    return this.databaseService.product.create({
-      data: createProductDto,
+  async create(createArticleDto: Prisma.ArticleCreateInput) {
+    return this.prisma.article.create({
+      data: {
+        ...createArticleDto,
+        content: createArticleDto.content
+      },
+      include: { content: true }
     });
   }
 
-  async findAll() {
-    return this.databaseService.product.findMany({});
+  async findAll(filters: FilterArticleDto) {
+    const where = this.filteringService.createWhereCondition(filters, this.filterConfig);
+
+
+    return this.prisma.article.findMany({
+      where,
+      include: { content: true },
+      orderBy: { createdAt: 'desc' }
+    });
   }
 
   async findOne(id: number) {
-    return this.databaseService.product.findUnique({
+    return this.prisma.article.findUnique({
       where: { id },
+      include: { content: true }
     });
   }
 
-  async update(id: number, updateProductDto: Prisma.ProductUpdateInput) {
-    return this.databaseService.product.update({
+  async update(id: number, updateArticleDto: Prisma.ArticleUpdateInput) {
+    // First, delete all existing content items for this article
+    await this.prisma.contentItem.deleteMany({
+      where: { articleId: id }
+    });
+
+    // Then update the article with new content items
+    return this.prisma.article.update({
       where: { id },
-      data: updateProductDto,
+      data: {
+        title: updateArticleDto.title as string,
+        category: updateArticleDto.category as string,
+        content: updateArticleDto.content
+      },
+      include: { content: true }
     });
   }
 
   async remove(id: number) {
-    return this.databaseService.product.delete({
-      where: { id },
+    return this.prisma.article.delete({
+      where: { id }
     });
   }
 }
 </file>
 
-<file path="schema/structure/structure.controller.ts">
+<file path="articles/filtering.service.ts">
+import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+
+@Injectable()
+export class FilteringService {
+  /**
+   * Creates a Prisma where condition based on filter parameters
+   * @param filters Object containing filter parameters
+   * @param config Configuration for mapping filter fields to database fields
+   * @returns Prisma where condition
+   */
+  createWhereCondition(
+    filters: Record<string, any>,
+    config: Record<string, { field: string; operator: string; type?: string }>,
+  ): Prisma.ArticleWhereInput {
+    const whereCondition: Prisma.ArticleWhereInput = {};
+    
+    // Remove pagination and sorting parameters
+    const { page, limit, sortBy, sortOrder, ...actualFilters } = filters;
+
+    // Process each filter
+    Object.keys(actualFilters).forEach((key) => {
+      if (actualFilters[key] !== undefined && config[key]) {
+        const { field, operator, type } = config[key];
+        let value = actualFilters[key];
+        
+        // Convert value based on type if specified
+        if (type === 'number' || type === 'int') {
+          // Handle array values for 'in' operator
+          if (operator === 'in' && Array.isArray(value)) {
+            value = value.map(item => Number(item));
+          } else {
+            value = Number(value);
+          }
+        }
+        
+        switch (operator) {
+          case 'equals':
+            whereCondition[field] = { equals: value };
+            break;
+          case 'contains':
+            whereCondition[field] = { contains: value };
+            break;
+          case 'in':
+            whereCondition[field] = { in: value };
+            break;
+          // Add more operators as needed
+          default:
+            whereCondition[field] = { equals: value };
+        }
+      }
+    });
+
+    return whereCondition;
+  }
+
+  /**
+   * Creates pagination parameters for Prisma
+   * @param filters Object containing pagination parameters
+   * @returns Pagination object with skip and take properties
+   */
+  createPaginationParams(filters: { page?: number; limit?: number }) {
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    
+    return {
+      skip: (page - 1) * limit,
+      take: limit,
+    };
+  }
+
+  /**
+   * Creates sorting parameters for Prisma
+   * @param filters Object containing sorting parameters
+   * @param config Configuration for mapping filter fields to database fields
+   * @returns Sorting object for Prisma orderBy
+   */
+  createSortingParams(
+    filters: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+    config: Record<string, { field: string; operator: string; type?: string }>,
+  ) {
+    if (!filters.sortBy) {
+      return undefined;
+    }
+
+    // Find the database field name from config
+    const configEntry = Object.entries(config).find(
+      ([key, value]) => key === filters.sortBy || value.field === filters.sortBy
+    );
+
+    // If field is found in config, use the mapped field name, otherwise use the provided sortBy
+    const fieldName = configEntry ? configEntry[1].field : filters.sortBy;
+    const direction = filters.sortOrder || 'asc';
+
+    return {
+      [fieldName]: direction,
+    };
+  }
+}
+</file>
+
+<file path="structure/structure.controller.ts">
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { StructureService } from './structure.service';
 import { Prisma } from '@prisma/client';
@@ -1164,7 +354,7 @@ export class StructureController {
 }
 </file>
 
-<file path="schema/structure/structure.module.ts">
+<file path="structure/structure.module.ts">
 import { Module } from '@nestjs/common';
 import { StructureService } from './structure.service';
 import { StructureController } from './structure.controller';
@@ -1176,7 +366,7 @@ import { StructureController } from './structure.controller';
 export class StructureModule {}
 </file>
 
-<file path="schema/structure/structure.service.ts">
+<file path="structure/structure.service.ts">
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { Prisma } from '@prisma/client';
@@ -1221,23 +411,187 @@ export class StructureService {
 }
 </file>
 
-<file path="schema/structure-attributes/structure-attributes.controller.ts">
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { StructureAttributesService } from './structure-attributes.service';
+<file path="structure-attributes/dto/filter-structure-attribute.dto.ts">
+import { IsOptional, IsString, IsNumber, IsBoolean, IsIn } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+
+export class FilterStructureAttributeDto {
+  @IsOptional()
+  @IsString()
+  attributeName?: string;
+
+  @IsOptional()
+  @IsString()
+  exactAttributeName?: string;
+
+  @IsOptional()
+  @IsString()
+  attributeValue?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  structureId?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  isActive?: boolean;
+  
+  @IsOptional()
+  @IsString()
+  stare?: string;
+  // Add more filters as needed based on your structure-attributes model
+
+  // Pagination parameters
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  page?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  limit?: number;
+
+  // Sorting parameters
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['asc', 'desc', 'ASC', 'DESC'])
+  @Transform(({ value }) => value?.toLowerCase())
+  sortOrder?: 'asc' | 'desc';
+}
+</file>
+
+<file path="structure-attributes/filter.service.ts">
+import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+@Injectable()
+export class FilterService {
+  /**
+   * Creates a Prisma where condition based on filter parameters
+   * @param filters Object containing filter parameters
+   * @param config Configuration for mapping filter fields to database fields
+   * @returns Prisma where condition
+   */
+  createWhereCondition(
+    filters: Record<string, any>,
+    config: Record<string, { field: string; operator: string; type?: string }>,
+  ): Prisma.StructureAttributesWhereInput {
+    const whereCondition: Prisma.StructureAttributesWhereInput = {};
+    
+    // Remove pagination and sorting parameters
+    const { page, limit, sortBy, sortOrder, ...actualFilters } = filters;
+
+    // Process each filter
+    Object.keys(actualFilters).forEach((key) => {
+      if (actualFilters[key] !== undefined && config[key]) {
+        const { field, operator, type } = config[key];
+        let value = actualFilters[key];
+        
+        // Convert value based on type if specified
+        if (type === 'number' || type === 'int') {
+          // Handle array values for 'in' operator
+          if (operator === 'in' && Array.isArray(value)) {
+            value = value.map(item => Number(item));
+          } else {
+            value = Number(value);
+          }
+        }
+        
+        switch (operator) {
+          case 'equals':
+            whereCondition[field] = { equals: value };
+            break;
+          case 'contains':
+            whereCondition[field] = { contains: value };
+            break;
+          case 'in':
+            whereCondition[field] = { in: value };
+            break;
+          // Add more operators as needed
+          default:
+            whereCondition[field] = { equals: value };
+        }
+      }
+    });
+
+    return whereCondition;
+  }
+
+  /**
+   * Creates pagination parameters for Prisma
+   * @param filters Object containing pagination parameters
+   * @returns Pagination object with skip and take properties
+   */
+  createPaginationParams(filters: { page?: number; limit?: number }) {
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    
+    return {
+      skip: (page - 1) * limit,
+      take: limit,
+    };
+  }
+
+  /**
+   * Creates sorting parameters for Prisma
+   * @param filters Object containing sorting parameters
+   * @param config Configuration for mapping filter fields to database fields
+   * @returns Sorting object for Prisma orderBy
+   */
+  createSortingParams(
+    filters: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
+    config: Record<string, { field: string; operator: string; type?: string }>,
+  ) {
+    if (!filters.sortBy) {
+      return undefined;
+    }
+
+    // Find the database field name from config
+    const configEntry = Object.entries(config).find(
+      ([key, value]) => key === filters.sortBy || value.field === filters.sortBy
+    );
+
+    // If field is found in config, use the mapped field name, otherwise use the provided sortBy
+    const fieldName = configEntry ? configEntry[1].field : filters.sortBy;
+    const direction = filters.sortOrder || 'asc';
+
+    return {
+      [fieldName]: direction,
+    };
+  }
+}
+</file>
+
+<file path="structure-attributes/structure-attributes.controller.ts">
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { StructureAttributesService } from './structure-attributes.service';
+import { Prisma } from '@prisma/client';
+import { AuthGuard } from '@nestjs/passport';
+import { FilterStructureAttributeDto } from './dto/filter-structure-attribute.dto';
 @Controller('structure-attributes')
 export class StructureAttributesController {
   constructor(private readonly structureAttributesService: StructureAttributesService) {}
 
   @Post()
+  @UseGuards(AuthGuard('jwt'))
   create(@Body() createStructureAttributeDto: Prisma.StructureAttributesCreateInput) {
     return this.structureAttributesService.create(createStructureAttributeDto);
   }
 
   @Get()
-  findAll() {
-    return this.structureAttributesService.findAll();
+  findAll(@Query() filters: FilterStructureAttributeDto) {
+    return this.structureAttributesService.findAll(filters);
   }
 
   @Get('structure')
@@ -1250,6 +604,7 @@ export class StructureAttributesController {
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard('jwt'))
   update(
     @Param('id') id: string,
     @Body() updateStructureAttributeDto: Prisma.StructureAttributesUpdateInput,
@@ -1258,32 +613,43 @@ export class StructureAttributesController {
   }
 
   @Delete(':id')
+  @UseGuards(AuthGuard('jwt'))
   remove(@Param('id') id: string) {
     return this.structureAttributesService.remove(+id);
   }
 }
 </file>
 
-<file path="schema/structure-attributes/structure-attributes.module.ts">
+<file path="structure-attributes/structure-attributes.module.ts">
 import { Module } from '@nestjs/common';
 import { StructureAttributesService } from './structure-attributes.service';
 import { StructureAttributesController } from './structure-attributes.controller';
+import { FilterService } from './filter.service';
 
 @Module({
   controllers: [StructureAttributesController],
-  providers: [StructureAttributesService],
+  providers: [StructureAttributesService, FilterService],
 })
 export class StructureAttributesModule {}
 </file>
 
-<file path="schema/structure-attributes/structure-attributes.service.ts">
+<file path="structure-attributes/structure-attributes.service.ts">
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { Prisma } from '@prisma/client';
-
+import { FilterService } from './filter.service';
+import { FilterStructureAttributeDto } from './dto/filter-structure-attribute.dto';
 @Injectable()
 export class StructureAttributesService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  private filterConfig = {
+    attributeName: { field: 'attributeName', operator: 'contains' },
+    exactAttributeName: { field: 'attributeName', operator: 'equals' },
+    attributeValue: { field: 'attributeValue', operator: 'contains' },
+    structureId: { field: 'structureId', operator: 'equals' , type:'int'},
+    stare: { field: 'status', operator: 'equals' },
+    // Add more mappings as needed
+  };
+  constructor(private readonly databaseService: DatabaseService, private filterService:FilterService) {}
 
   async create(data: Prisma.StructureAttributesCreateInput) {
     return this.databaseService.structureAttributes.create({
@@ -1291,12 +657,32 @@ export class StructureAttributesService {
     });
   }
 
-  async findAll() {
-    return this.databaseService.structureAttributes.findMany({
-      include: {
-        structure: true,
+  async findAll(filters: FilterStructureAttributeDto) {
+    const where = this.filterService.createWhereCondition(filters, this.filterConfig);
+    const pagination = this.filterService.createPaginationParams(filters);
+    const orderBy = this.filterService.createSortingParams(filters, this.filterConfig);
+
+    const [data, total] = await Promise.all([
+      this.databaseService.structureAttributes.findMany({
+        where,
+        include: {
+          structure: true,
+        },
+        orderBy,
+        ...pagination,
+      }),
+      this.databaseService.structureAttributes.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page: filters.page || 1,
+        limit: filters.limit || 10,
+        totalPages: Math.ceil(total / (filters.limit || 10)),
       },
-    });
+    };
   }
  async findAllStructures(){
   return this.databaseService.structure.findMany({});
@@ -1322,307 +708,6 @@ export class StructureAttributesService {
       where: { id },
     });
   }
-}
-</file>
-
-<file path="users/dto/create-user.dto.ts">
-export class CreateUserDto {
-  email: string;
-  password: string;
-  username: string;
-}
-</file>
-
-<file path="users/users.controller.spec.ts">
-import { Test, TestingModule } from '@nestjs/testing';
-import { UsersController } from './users.controller';
-
-describe('UsersController', () => {
-  let controller: UsersController;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [UsersController],
-    }).compile();
-
-    controller = module.get<UsersController>(UsersController);
-  });
-
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-});
-</file>
-
-<file path="users/users.controller.ts">
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UsersService } from './users.service';
-
-@Controller('api/users')
-export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
-
-  @UseGuards(JwtAuthGuard)
-  @Get('profile')
-  getProfile() {
-    return { message: 'Protected route' };
-  }
-
-  @Get('toti')
-  totiUtilizatorii(): string {        
-    return 'This action returns all users';
-  }
-}
-</file>
-
-<file path="users/users.module.ts">
-import { Module } from '@nestjs/common';
-import { UsersController } from './users.controller';
-import { UsersService } from './users.service';
-import { EmailModule } from '../email/email.module';
-
-@Module({
-  imports: [EmailModule],
-  controllers: [UsersController],
-  providers: [UsersService],
-  exports: [UsersService] // Export UsersService for use in AuthModule
-})
-export class UsersModule {}
-</file>
-
-<file path="users/users.service.ts">
-import { Injectable, Logger } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { EmailService } from '../email/email.service';
-import * as bcrypt from 'bcrypt';
-import { Cron } from '@nestjs/schedule';
-
-@Injectable()
-export class UsersService {
-  constructor(private readonly databaseService: DatabaseService, private readonly emailService:EmailService) {}
-
-  private readonly logger = new Logger(UsersService.name);
-
-  async findByUsername(username: string) {
-    return this.databaseService.user.findUnique({
-      where: { username },
-    });
-  }
-
-  async findById(id: number) {
-    return this.databaseService.user.findUnique({
-      where: { id },
-    });
-  }
-  async sendMailToUser(userData:any){
-    await this.emailService.sendEmail(
-      userData.email,
-      'Welcome to Our Platform',
-      'Thank you for joining our platform!!',
-      '<h1>Welcome!</h1><p>Thank you for joining our platform!</p>',
-    );
-  }
-  async create(createUserDto: CreateUserDto) {
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-    const { password, ...result } = await this.databaseService.user.create({
-      data: {
-        ...createUserDto,
-        password: hashedPassword,
-      },
-    });
-    return result;
-  }
-
-  @Cron('15 * * * * *')
-  handleCron() {
-    this.logger.debug('Called when the current second is 15');
-  }
-}
-</file>
-
-<file path="utils/timezone.ts">
-import * as moment from 'moment-timezone';
-
-export const getRomaniaDate = (): Date => {
-    return new Date(
-      new Date().toLocaleString('en-US', { timeZone: 'Europe/Bucharest' })
-    );
-  };
-
-  export const getRomanianDate = (): Date => {
-    return moment().tz('Europe/Bucharest').toDate();
-  };
-</file>
-
-<file path="app.controller.spec.ts">
-import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-
-describe('AppController', () => {
-  let appController: AppController;
-
-  beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
-      controllers: [AppController],
-      providers: [AppService],
-    }).compile();
-
-    appController = app.get<AppController>(AppController);
-  });
-
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
-    });
-  });
-});
-</file>
-
-<file path="app.controller.ts">
-import { Controller, Get, Render } from '@nestjs/common';
-import { AppService } from './app.service';
-
-@Controller()
-export class AppController {
-  constructor(private readonly appService: AppService) {}
-
-  @Get()
-  @Render('index')
-  root(){
-    return { message: 'Hello World!!!!!' };
-  }
-}
-</file>
-
-<file path="app.module.ts">
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { DatabaseModule } from './database/database.module';
-import { ConfigModule } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
-import { FeaturesModule } from './features/features.module';
-import { UsersModule } from './users/users.module';
-import { AuthModule } from './auth/auth.module';
-import { ProductModule } from './product/product.module';
-import { EmailModule } from './email/email.module';
-import { FileUploadModule } from './file-upload/file-upload.module';
-@Module({
-  imports: [
-    UsersModule,
-    AuthModule,
-    ProductModule,
-    EmailModule,
-    FileUploadModule,
-    DatabaseModule, FeaturesModule, ConfigModule.forRoot(), ScheduleModule.forRoot()],
-  controllers: [AppController],
-  providers: [AppService],
-})
-export class AppModule {}
-</file>
-
-<file path="app.service.ts">
-import { Injectable } from '@nestjs/common';
-
-@Injectable()
-export class AppService {
-  getHello(): string {
-    return 'Hello World!!!!';
-  }
-}
-</file>
-
-<file path="main.ts">
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { join } from 'path';
-import { NestExpressApplication } from '@nestjs/platform-express';
-async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(
-    AppModule,
-  );
-  app.enableCors();
-  app.useStaticAssets(join(__dirname, '..', 'public'));
-  app.setBaseViewsDir(join(__dirname, '..', 'views'));
-  app.setViewEngine('hbs');
-  //console.log('TZ',process.env.TZ);
-
-  await app.listen(process.env.PORT ?? 3334);
-}
-bootstrap();
-</file>
-
-<file path="schema.prisma">
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-
-model Product {
-  id Int @default(autoincrement()) @id
-  name String @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  price Float
-  sale Boolean @default(false)
-  availibility Availibility
-
-}
-
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  username  String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-enum Availibility {
-  IN_STORE
-  ONLINE
-}
-
-model Structure {
-  id     Int @id @default(autoincrement())
-  name String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  status   String?  @default("active")  @db.VarChar(24)
-  attributes StructureAttributes[] 
-}
-
-model StructureAttributes {
-  id             Int       @id @default(autoincrement())
-  structure      Structure @relation(fields: [structureId], references: [id])
-  structureId    Int
-  datatype       Datatypes
-  attributeName  String
-  attributeValue String
-  status   String?  @default("active")  @db.VarChar(24)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-}
-
-enum Datatypes {
-  TEXT
-  FLOAT
-  DATE 
-  TIME
-  BOOLEAN
 }
 </file>
 
