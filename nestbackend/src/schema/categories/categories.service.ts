@@ -69,7 +69,7 @@ export class CategoriesService {
       filters,
       this.categoryFilterConfig,
     );
-    const pagination = this.filteringService.createPaginationParams(filters);
+  //  const pagination = this.filteringService.createPaginationParams(filters);
     const orderBy = this.filteringService.createSortingParams<'Category'>(
       filters,
       this.categoryFilterConfig,
@@ -80,15 +80,15 @@ export class CategoriesService {
         where,
         include: { _count: { select: { lists: true } } }, // Include list count
         orderBy,
-        ...pagination,
+      //  ...pagination,
       }),
       this.prisma.category.count({ where }),
     ]);
 
-    const totalPages = pagination.take ? Math.ceil(total / pagination.take) : 1;
+  //  const totalPages = pagination.take ? Math.ceil(total / pagination.take) : 1;
     return {
       data,
-      meta: { totalItems: total, itemsPerPage: pagination.take ?? total, totalPages, currentPage: filters.page ?? 1 },
+      meta: { },
     };
   }
 
@@ -167,7 +167,7 @@ export class CategoriesService {
 
      const where = { ...baseWhere, ...additionalWhere }; // Combine conditions
 
-     const pagination = this.filteringService.createPaginationParams(filters);
+    // const pagination = this.filteringService.createPaginationParams(filters);
      // Note: Sorting by 'category.name' is not applicable here as all lists belong to the same category
      const orderBy = this.filteringService.createSortingParams<'List'>(
          filters,
@@ -182,15 +182,15 @@ export class CategoriesService {
           category: { select: { id: true, name: true } } // Include basic category info
         },
         orderBy,
-        ...pagination,
+      //  ...pagination,
       }),
       this.prisma.list.count({ where }),
     ]);
 
-    const totalPages = pagination.take ? Math.ceil(total / pagination.take) : 1;
+ //   const totalPages = pagination.take ? Math.ceil(total / pagination.take) : 1;
     return {
       data,
-      meta: { totalItems: total, itemsPerPage: pagination.take ?? total, totalPages, currentPage: filters.page ?? 1 },
+      meta: {  },
     };
   }
 

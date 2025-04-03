@@ -46,6 +46,11 @@
                     <q-item-label>Atribute structuri</q-item-label>
                   </q-item-section>
                 </q-item>
+                <q-item clickable v-ripple to="/categories">
+                  <q-item-section>
+                    <q-item-label>Liste(Categorii)</q-item-label>
+                  </q-item-section>
+                </q-item>
                 <q-item clickable v-ripple to="/articles">
                   <q-item-section>
                     <q-item-label>Articole</q-item-label>

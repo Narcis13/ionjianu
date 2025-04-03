@@ -491,45 +491,60 @@
   }
   
   async function saveList() {
-    const isValid = await listFormRef.value?.validate();
-    if (!isValid) return;
-  
-    savingList.value = true;
-    const currentListCategoryId = listDialog.originalCategoryId; // Category context for refresh
-  
-    try {
-       const payload = { ...listDialog.data };
-       if (!payload.status) delete payload.status; // Handle empty status
-  
-      if (listDialog.isEdit && payload.id) {
-        await CategoryService.updateList(payload.id, payload as UpdateListDto);
-        $q.notify({ type: 'positive', message: 'List item updated!' });
-      } else if (payload.categoryId) { // Ensure categoryId exists for create
-        await CategoryService.createList(payload.categoryId, payload as CreateListDto);
-        $q.notify({ type: 'positive', message: 'List item created!' });
-      } else {
-          throw new Error("Category ID is missing for creating list item.");
-      }
-  
-      listDialog.show = false;
-      await fetchListsForCategory(currentListCategoryId); // Refresh list in the dialog
-  
-      // If category was changed, potentially refresh the source category list too (optional)
-      if (listDialog.isEdit && payload.categoryId !== currentListCategoryId) {
-          // You might trigger a refresh of the other category if needed,
-          // but for now, just refresh the main category list counts
-           await fetchCategories(); // Refreshes counts
-      } else {
-           // Refresh category counts in main table if item added/deleted/status changed potentially
-           await fetchCategories();
-      }
-  
-    } catch (error) {
-      handleApiError(error, listDialog.isEdit ? 'updating list item' : 'creating list item');
-    } finally {
-      savingList.value = false;
+  const isValid = await listFormRef.value?.validate();
+  if (!isValid) return;
+
+  savingList.value = true;
+  const currentListCategoryId = listDialog.originalCategoryId; // Category context for refresh
+
+  try {
+    // Create a clean payload without unnecessary fields
+    const payload = { 
+      item: listDialog.data.item 
+    };
+    
+    // Only add status if it's defined
+    if (listDialog.data.status) {
+      payload.status = listDialog.data.status;
     }
+    
+    if (listDialog.isEdit && listDialog.data.id) {
+      // For updates, handle the category relationship properly
+      const updatePayload = {
+        ...payload,
+        // Use connect syntax for relationship updates
+        category: listDialog.data.categoryId ? {
+          connect: { id: listDialog.data.categoryId }
+        } : undefined
+      };
+      
+      await CategoryService.updateList(listDialog.data.id, updatePayload);
+      $q.notify({ type: 'positive', message: 'List item updated!' });
+    } else if (listDialog.data.categoryId) {
+      // For creation, we can use the existing approach
+      await CategoryService.createList(listDialog.data.categoryId, payload);
+      $q.notify({ type: 'positive', message: 'List item created!' });
+    } else {
+      throw new Error("Category ID is missing for creating list item.");
+    }
+
+    listDialog.show = false;
+    await fetchListsForCategory(currentListCategoryId); // Refresh list in the dialog
+
+    // If category was changed, refresh the main category list counts
+    if (listDialog.isEdit && listDialog.data.categoryId !== currentListCategoryId) {
+      await fetchCategories(); // Refreshes counts
+    } else {
+      // Refresh category counts in main table if item added/deleted/status changed
+      await fetchCategories();
+    }
+
+  } catch (error) {
+    handleApiError(error, listDialog.isEdit ? 'updating list item' : 'creating list item');
+  } finally {
+    savingList.value = false;
   }
+}
   
   function confirmDeleteList(list: List) {
     $q.dialog({

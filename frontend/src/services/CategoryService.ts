@@ -11,9 +11,15 @@ import type {
   FilterListDto,
   PaginatedResponse,
 } from 'src/types/models'; // Adjust path if needed
-
-const CATEGORY_ENDPOINT = '/categories'; // Base path from your NestJS controller
-
+import { host } from '../config/api';
+import { useUtilizatorStore } from '../stores/useUtilizatorStores'
+const CATEGORY_ENDPOINT = host+'/categories'; // Base path from your NestJS controller
+const utilizatorStore = useUtilizatorStore()
+const config = {
+  headers: {
+    Authorization: `Bearer ${utilizatorStore.utilizator?.access_token}`
+  }
+};
 // Helper to clean filter objects (remove undefined/empty string values)
 const cleanFilters = (filters: Record<string, any>): Record<string, any> => {
     const cleaned: Record<string, any> = {};
@@ -48,17 +54,17 @@ export const CategoryService = {
 
   async createCategory(data: CreateCategoryDto): Promise<Category> {
     // No need to manually add Auth headers if interceptor is set up
-    const response = await api.post<Category>(CATEGORY_ENDPOINT, data);
+    const response = await api.post<Category>(CATEGORY_ENDPOINT, data,config);
     return response.data;
   },
 
   async updateCategory(id: number, data: UpdateCategoryDto): Promise<Category> {
-    const response = await api.patch<Category>(`${CATEGORY_ENDPOINT}/${id}`, data);
+    const response = await api.patch<Category>(`${CATEGORY_ENDPOINT}/${id}`, data,config);
     return response.data;
   },
 
   async deleteCategory(id: number): Promise<void> {
-    await api.delete(`${CATEGORY_ENDPOINT}/${id}`);
+    await api.delete(`${CATEGORY_ENDPOINT}/${id}`,config);
     // DELETE often returns 204 No Content, so no data expected
   },
 
@@ -78,18 +84,20 @@ export const CategoryService = {
    },
 
   async createList(categoryId: number, data: CreateListDto): Promise<List> {
-    const response = await api.post<List>(`${CATEGORY_ENDPOINT}/${categoryId}/lists`, data);
+    const response = await api.post<List>(`${CATEGORY_ENDPOINT}/${categoryId}/lists`, data,config);
     return response.data;
   },
 
    // Note: updateList endpoint is /categories/lists/:listId in your backend
   async updateList(listId: number, data: UpdateListDto): Promise<List> {
-    const response = await api.patch<List>(`${CATEGORY_ENDPOINT}/lists/${listId}`, data);
+    if (data.id) delete data.id; // Remove id if present to avoid conflicts
+  console.log('Update List Data:', data); // Debugging line
+    const response = await api.patch<List>(`${CATEGORY_ENDPOINT}/lists/${listId}`, data,config);
     return response.data;
   },
 
    // Note: deleteList endpoint is /categories/lists/:listId in your backend
   async deleteList(listId: number): Promise<void> {
-    await api.delete(`${CATEGORY_ENDPOINT}/lists/${listId}`);
+    await api.delete(`${CATEGORY_ENDPOINT}/lists/${listId}`,config);
   },
 };
