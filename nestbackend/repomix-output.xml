@@ -43,670 +43,535 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-articles/
-  dto/
-    filter-article.dto.ts
-  articles.controller.ts
-  articles.module.ts
-  articles.service.ts
-  filtering.service.ts
-structure/
-  structure.controller.ts
-  structure.module.ts
-  structure.service.ts
-structure-attributes/
-  dto/
-    filter-structure-attribute.dto.ts
-  filter.service.ts
-  structure-attributes.controller.ts
-  structure-attributes.module.ts
-  structure-attributes.service.ts
+dto/
+  create-category.dto.ts
+  create-list.dto.ts
+  filter-category.dto.ts
+  filter-list.dto.ts
+  update-category.dto.ts
+  update-list.dto.ts
+categories.controller.ts
+categories.module.ts
+categories.service.ts
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path="articles/dto/filter-article.dto.ts">
-import { IsOptional, IsString, IsIn } from 'class-validator';
-import { Transform } from 'class-transformer';
+<file path="dto/create-category.dto.ts">
+import { IsString, IsNotEmpty, IsOptional, MaxLength, IsIn } from 'class-validator';
 
-export class FilterArticleDto {
-  @IsOptional()
+export class CreateCategoryDto {
   @IsString()
-  category?: string;
-
-  // Sorting parameters
-  @IsOptional()
-  @IsString()
-  sortBy?: string;
+  @IsNotEmpty()
+  @MaxLength(255) // Example max length
+  name: string;
 
   @IsOptional()
   @IsString()
-  @IsIn(['asc', 'desc', 'ASC', 'DESC'])
-  @Transform(({ value }) => value?.toLowerCase())
-  sortOrder?: 'asc' | 'desc';
+  @IsIn(['active', 'inactive']) // Example valid statuses
+  @MaxLength(24)
+  status?: string; // Defaults to 'active' via Prisma schema
 }
 </file>
 
-<file path="articles/articles.controller.ts">
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
-import { ArticlesService } from './articles.service';
-import { Prisma } from '@prisma/client';
-import { AuthGuard } from '@nestjs/passport';
-import { FilterArticleDto } from './dto/filter-article.dto';
-@Controller('articles')
-export class ArticlesController {
-  constructor(private readonly articlesService: ArticlesService) {}
+<file path="dto/create-list.dto.ts">
+import { IsString, IsNotEmpty, IsOptional, MaxLength, IsIn } from 'class-validator';
 
-  @Post()
-  @UseGuards(AuthGuard('jwt'))
-  create(@Body() createArticleDto: Prisma.ArticleCreateInput) {
-    return this.articlesService.create(createArticleDto);
-  }
 
-  @Get()
-  findAll(@Query() filters: FilterArticleDto) {
-    return this.articlesService.findAll(filters);
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.articlesService.findOne(+id);
-  }
-
-  @Patch(':id')
-  @UseGuards(AuthGuard('jwt'))
-  update(@Param('id') id: string, @Body() updateArticleDto: Prisma.ArticleUpdateInput) {
-    return this.articlesService.update(+id, updateArticleDto);
-  }
-
-  @Delete(':id')
-  @UseGuards(AuthGuard('jwt'))
-  remove(@Param('id') id: string) {
-    return this.articlesService.remove(+id);
-  }
-}
-</file>
-
-<file path="articles/articles.module.ts">
-import { Module } from '@nestjs/common';
-import { ArticlesController } from './articles.controller';
-import { ArticlesService } from './articles.service';
-import { FilteringService } from './filtering.service';
-
-@Module({
-
-  controllers: [ArticlesController],
-  providers: [ArticlesService, FilteringService]
- 
-})
-export class ArticlesModule {}
-</file>
-
-<file path="articles/articles.service.ts">
-import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../../database/database.service';
-import { Prisma } from '@prisma/client';
-import { FilteringService } from './filtering.service';
-import { FilterArticleDto } from './dto/filter-article.dto';
-
-@Injectable()
-export class ArticlesService {
-  constructor(private prisma: DatabaseService, private filteringService:FilteringService) {}
+export class CreateListDto {
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(500)
+    item: string;
   
-  private filterConfig = {
-    category: { field: 'category', operator: 'equals' },  
+    // categoryId is implicitly known from the route parameter in the controller
+    // @IsInt()
+    // @IsPositive()
+    // @IsNotEmpty()
+    // categoryId: number; // We'll get this from the route param
+  
+    @IsOptional()
+    @IsString()
+    @IsIn(['active', 'inactive', 'completed'])
+    @MaxLength(24)
+    status?: string;
   }
-
-  async create(createArticleDto: Prisma.ArticleCreateInput) {
-    return this.prisma.article.create({
-      data: {
-        ...createArticleDto,
-        content: createArticleDto.content
-      },
-      include: { content: true }
-    });
-  }
-
-  async findAll(filters: FilterArticleDto) {
-    const where = this.filteringService.createWhereCondition(filters, this.filterConfig);
-
-
-    return this.prisma.article.findMany({
-      where,
-      include: { content: true },
-      orderBy: { createdAt: 'desc' }
-    });
-  }
-
-  async findOne(id: number) {
-    return this.prisma.article.findUnique({
-      where: { id },
-      include: { content: true }
-    });
-  }
-
-  async update(id: number, updateArticleDto: Prisma.ArticleUpdateInput) {
-    // First, delete all existing content items for this article
-    await this.prisma.contentItem.deleteMany({
-      where: { articleId: id }
-    });
-
-    // Then update the article with new content items
-    return this.prisma.article.update({
-      where: { id },
-      data: {
-        title: updateArticleDto.title as string,
-        category: updateArticleDto.category as string,
-        content: updateArticleDto.content
-      },
-      include: { content: true }
-    });
-  }
-
-  async remove(id: number) {
-    return this.prisma.article.delete({
-      where: { id }
-    });
-  }
-}
 </file>
 
-<file path="articles/filtering.service.ts">
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-
-@Injectable()
-export class FilteringService {
-  /**
-   * Creates a Prisma where condition based on filter parameters
-   * @param filters Object containing filter parameters
-   * @param config Configuration for mapping filter fields to database fields
-   * @returns Prisma where condition
-   */
-  createWhereCondition(
-    filters: Record<string, any>,
-    config: Record<string, { field: string; operator: string; type?: string }>,
-  ): Prisma.ArticleWhereInput {
-    const whereCondition: Prisma.ArticleWhereInput = {};
-    
-    // Remove pagination and sorting parameters
-    const { page, limit, sortBy, sortOrder, ...actualFilters } = filters;
-
-    // Process each filter
-    Object.keys(actualFilters).forEach((key) => {
-      if (actualFilters[key] !== undefined && config[key]) {
-        const { field, operator, type } = config[key];
-        let value = actualFilters[key];
-        
-        // Convert value based on type if specified
-        if (type === 'number' || type === 'int') {
-          // Handle array values for 'in' operator
-          if (operator === 'in' && Array.isArray(value)) {
-            value = value.map(item => Number(item));
-          } else {
-            value = Number(value);
-          }
-        }
-        
-        switch (operator) {
-          case 'equals':
-            whereCondition[field] = { equals: value };
-            break;
-          case 'contains':
-            whereCondition[field] = { contains: value };
-            break;
-          case 'in':
-            whereCondition[field] = { in: value };
-            break;
-          // Add more operators as needed
-          default:
-            whereCondition[field] = { equals: value };
-        }
-      }
-    });
-
-    return whereCondition;
-  }
-
-  /**
-   * Creates pagination parameters for Prisma
-   * @param filters Object containing pagination parameters
-   * @returns Pagination object with skip and take properties
-   */
-  createPaginationParams(filters: { page?: number; limit?: number }) {
-    const page = filters.page || 1;
-    const limit = filters.limit || 10;
-    
-    return {
-      skip: (page - 1) * limit,
-      take: limit,
-    };
-  }
-
-  /**
-   * Creates sorting parameters for Prisma
-   * @param filters Object containing sorting parameters
-   * @param config Configuration for mapping filter fields to database fields
-   * @returns Sorting object for Prisma orderBy
-   */
-  createSortingParams(
-    filters: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
-    config: Record<string, { field: string; operator: string; type?: string }>,
-  ) {
-    if (!filters.sortBy) {
-      return undefined;
-    }
-
-    // Find the database field name from config
-    const configEntry = Object.entries(config).find(
-      ([key, value]) => key === filters.sortBy || value.field === filters.sortBy
-    );
-
-    // If field is found in config, use the mapped field name, otherwise use the provided sortBy
-    const fieldName = configEntry ? configEntry[1].field : filters.sortBy;
-    const direction = filters.sortOrder || 'asc';
-
-    return {
-      [fieldName]: direction,
-    };
-  }
-}
-</file>
-
-<file path="structure/structure.controller.ts">
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { StructureService } from './structure.service';
-import { Prisma } from '@prisma/client';
-import { AuthGuard } from '@nestjs/passport';
-
-@Controller('structure')
-export class StructureController {
-  constructor(private readonly structureService: StructureService) {}
-
-  @Post()
-  @UseGuards(AuthGuard('jwt'))
-  create(@Body() createStructureDto: Prisma.StructureCreateInput) {
-    return this.structureService.create(createStructureDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.structureService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.structureService.findOne(+id);
-  }
-
-  @Patch(':id')
-  @UseGuards(AuthGuard('jwt'))
-  update(@Param('id') id: string, @Body() updateStructureDto: Prisma.StructureUpdateInput) {
-    return this.structureService.update(+id, updateStructureDto);
-  }
-
-  @Delete(':id')
-  @UseGuards(AuthGuard('jwt'))
-  remove(@Param('id') id: string) {
-    return this.structureService.remove(+id);
-  }
-}
-</file>
-
-<file path="structure/structure.module.ts">
-import { Module } from '@nestjs/common';
-import { StructureService } from './structure.service';
-import { StructureController } from './structure.controller';
-
-@Module({
-  controllers: [StructureController],
-  providers: [StructureService],
-})
-export class StructureModule {}
-</file>
-
-<file path="structure/structure.service.ts">
-import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../../database/database.service';
-import { Prisma } from '@prisma/client';
-import { getRomanianDate } from 'src/utils/timezone';
-
-@Injectable()
-export class StructureService {
-  constructor(private readonly databaseService: DatabaseService) {}
-
-  async create(createStructureDto: Prisma.StructureCreateInput) {
-    return this.databaseService.structure.create({
-      data: createStructureDto,
-    });
-  }
-
-  findAll() {
-    return this.databaseService.structure.findMany({});
-  }
-
-  findOne(id: number) {
-    return this.databaseService.structure.findUnique({
-      where: { id },
-    });
-  }
-
-  async update(id: number, updateStructureDto: Prisma.StructureUpdateInput) {
-    console.log('update ',getRomanianDate())
-    return this.databaseService.structure.update({
-      where: { id },
-      data: 
-        updateStructureDto
-   
-      
-    });
-  }
-
-  remove(id: number) {
-    return this.databaseService.structure.delete({
-      where: { id },
-    });
-  }
-}
-</file>
-
-<file path="structure-attributes/dto/filter-structure-attribute.dto.ts">
-import { IsOptional, IsString, IsNumber, IsBoolean, IsIn } from 'class-validator';
+<file path="dto/filter-category.dto.ts">
+import { IsOptional, IsString, IsIn, IsInt, Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-export class FilterStructureAttributeDto {
+export class FilterCategoryDto {
   @IsOptional()
   @IsString()
-  attributeName?: string;
+  name?: string; // Filter by name (contains)
 
   @IsOptional()
   @IsString()
-  exactAttributeName?: string;
-
-  @IsOptional()
-  @IsString()
-  attributeValue?: string;
-
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  structureId?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  @Transform(({ value }) => {
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    return value;
-  })
-  isActive?: boolean;
-  
-  @IsOptional()
-  @IsString()
-  stare?: string;
-  // Add more filters as needed based on your structure-attributes model
+  @IsIn(['active', 'inactive'])
+  status?: string; // Filter by exact status
 
   // Pagination parameters
   @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  page?: number;
+  @Type(() => Number) // Transform query param string to number
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
 
   @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  limit?: number;
+  @Type(() => Number) // Transform query param string to number
+  @IsInt()
+  @Min(0) // Allow 0 to fetch all (handled in service)
+  limit?: number = 10;
 
   // Sorting parameters
   @IsOptional()
   @IsString()
-  sortBy?: string;
+  // Allow sorting by 'id', 'name', 'status', 'createdAt', 'updatedAt'
+  @IsIn(['id', 'name', 'status', 'createdAt', 'updatedAt'])
+  sortBy?: string = 'createdAt'; // Default sort field
 
   @IsOptional()
   @IsString()
-  @IsIn(['asc', 'desc', 'ASC', 'DESC'])
+  @IsIn(['asc', 'desc'])
   @Transform(({ value }) => value?.toLowerCase())
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: 'asc' | 'desc' = 'desc'; // Default sort order
 }
 </file>
 
-<file path="structure-attributes/filter.service.ts">
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+<file path="dto/filter-list.dto.ts">
+import { IsString, IsOptional, IsIn, IsInt, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
-@Injectable()
-export class FilterService {
-  /**
-   * Creates a Prisma where condition based on filter parameters
-   * @param filters Object containing filter parameters
-   * @param config Configuration for mapping filter fields to database fields
-   * @returns Prisma where condition
-   */
-  createWhereCondition(
-    filters: Record<string, any>,
-    config: Record<string, { field: string; operator: string; type?: string }>,
-  ): Prisma.StructureAttributesWhereInput {
-    const whereCondition: Prisma.StructureAttributesWhereInput = {};
-    
-    // Remove pagination and sorting parameters
-    const { page, limit, sortBy, sortOrder, ...actualFilters } = filters;
 
-    // Process each filter
-    Object.keys(actualFilters).forEach((key) => {
-      if (actualFilters[key] !== undefined && config[key]) {
-        const { field, operator, type } = config[key];
-        let value = actualFilters[key];
-        
-        // Convert value based on type if specified
-        if (type === 'number' || type === 'int') {
-          // Handle array values for 'in' operator
-          if (operator === 'in' && Array.isArray(value)) {
-            value = value.map(item => Number(item));
-          } else {
-            value = Number(value);
-          }
-        }
-        
-        switch (operator) {
-          case 'equals':
-            whereCondition[field] = { equals: value };
-            break;
-          case 'contains':
-            whereCondition[field] = { contains: value };
-            break;
-          case 'in':
-            whereCondition[field] = { in: value };
-            break;
-          // Add more operators as needed
-          default:
-            whereCondition[field] = { equals: value };
-        }
-      }
-    });
-
-    return whereCondition;
+export class FilterListDto {
+    @IsOptional()
+    @IsString()
+    item?: string;
+  
+    @IsOptional()
+    @IsString()
+    @IsIn(['active', 'inactive', 'completed'])
+    status?: string;
+  
+    // categoryId is implicitly known from the route parameter for listing within a category
+    // We might add it back if we need a global list search endpoint later
+    // @IsOptional()
+    // @Type(() => Number)
+    // @IsInt()
+    // @IsPositive()
+    // categoryId?: number;
+  
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    page?: number = 1;
+  
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    limit?: number = 10;
+  
+    @IsOptional()
+    @IsString()
+    @IsIn(['id', 'item', 'status', 'createdAt', 'updatedAt']) // category.name sorting isn't directly filterable here
+    sortBy?: string = 'createdAt';
+  
+    @IsOptional()
+    @IsString()
+    @IsIn(['asc', 'desc'])
+    @Transform(({ value }) => value?.toLowerCase())
+    sortOrder?: 'asc' | 'desc' = 'desc';
   }
+</file>
 
-  /**
-   * Creates pagination parameters for Prisma
-   * @param filters Object containing pagination parameters
-   * @returns Pagination object with skip and take properties
-   */
-  createPaginationParams(filters: { page?: number; limit?: number }) {
-    const page = filters.page || 1;
-    const limit = filters.limit || 10;
-    
-    return {
-      skip: (page - 1) * limit,
-      take: limit,
-    };
-  }
+<file path="dto/update-category.dto.ts">
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateCategoryDto } from './create-category.dto';
 
-  /**
-   * Creates sorting parameters for Prisma
-   * @param filters Object containing sorting parameters
-   * @param config Configuration for mapping filter fields to database fields
-   * @returns Sorting object for Prisma orderBy
-   */
-  createSortingParams(
-    filters: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
-    config: Record<string, { field: string; operator: string; type?: string }>,
-  ) {
-    if (!filters.sortBy) {
-      return undefined;
+export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {}
+</file>
+
+<file path="dto/update-list.dto.ts">
+import {  IsOptional,  IsInt,  IsPositive } from 'class-validator';
+
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateListDto } from './create-list.dto';
+
+export class UpdateListDto extends PartialType(CreateListDto) {
+    @IsOptional() // Make categoryId optional for updates
+    @IsInt()
+    @IsPositive()
+    categoryId?: number; // Allow changing the category
+}
+</file>
+
+<file path="categories.controller.ts">
+import {
+    Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, ParseIntPipe, HttpCode, HttpStatus, DefaultValuePipe, ParseBoolPipe
+  } from '@nestjs/common';
+  import { CategoriesService } from './categories.service';
+  // DTOs are now siblings
+  import { CreateCategoryDto } from './dto/create-category.dto'; 
+  import {  UpdateCategoryDto } from './dto/update-category.dto'; 
+  import {  FilterCategoryDto } from './dto/filter-category.dto'; // Adjust DTO imports
+  import { CreateListDto } from './dto/create-list.dto';   
+  import { UpdateListDto } from './dto/update-list.dto';   
+  import { FilterListDto } from './dto/filter-list.dto'; 
+  import { AuthGuard } from '@nestjs/passport'; // Assuming JWT strategy
+  
+// Apply guard globally for this controller
+  @Controller('categories')
+  export class CategoriesController {
+    constructor(private readonly categoriesService: CategoriesService) {}
+  
+    // --- Category Routes ---
+  
+    @Post()
+    @UseGuards(AuthGuard('jwt')) 
+    @HttpCode(HttpStatus.CREATED)
+    createCategory(@Body() createCategoryDto: CreateCategoryDto) {
+      return this.categoriesService.createCategory(createCategoryDto);
     }
-
-    // Find the database field name from config
-    const configEntry = Object.entries(config).find(
-      ([key, value]) => key === filters.sortBy || value.field === filters.sortBy
-    );
-
-    // If field is found in config, use the mapped field name, otherwise use the provided sortBy
-    const fieldName = configEntry ? configEntry[1].field : filters.sortBy;
-    const direction = filters.sortOrder || 'asc';
-
-    return {
-      [fieldName]: direction,
-    };
+  
+    @Get()
+    @HttpCode(HttpStatus.OK)
+    findAllCategories(@Query() filterCategoryDto: FilterCategoryDto) {
+      // Public access or keep controller guard? Assuming protected for now.
+      return this.categoriesService.findAllCategories(filterCategoryDto);
+    }
+  
+    @Get(':categoryId')
+    @HttpCode(HttpStatus.OK)
+    findOneCategory(
+        @Param('categoryId', ParseIntPipe) categoryId: number,
+        // Optional query param to include lists
+        @Query('includeLists', new DefaultValuePipe(false), ParseBoolPipe) includeLists: boolean
+    ) {
+       // Public access or keep controller guard? Assuming protected for now.
+      return this.categoriesService.findOneCategory(categoryId, includeLists);
+    }
+  
+    @Patch(':categoryId')
+    @UseGuards(AuthGuard('jwt')) 
+    @HttpCode(HttpStatus.OK)
+    updateCategory(
+      @Param('categoryId', ParseIntPipe) categoryId: number,
+      @Body() updateCategoryDto: UpdateCategoryDto,
+    ) {
+      return this.categoriesService.updateCategory(categoryId, updateCategoryDto);
+    }
+  
+    @Delete(':categoryId')
+    @UseGuards(AuthGuard('jwt')) 
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async removeCategory(@Param('categoryId', ParseIntPipe) categoryId: number): Promise<void> {
+      await this.categoriesService.removeCategory(categoryId);
+    }
+  
+    // --- List Item Routes (Nested under Category) ---
+  
+    @Post(':categoryId/lists')
+    @UseGuards(AuthGuard('jwt')) 
+    @HttpCode(HttpStatus.CREATED)
+    createList(
+        @Param('categoryId', ParseIntPipe) categoryId: number,
+        @Body() createListDto: CreateListDto
+    ) {
+        // categoryId from the route is passed to the service
+        return this.categoriesService.createList(categoryId, createListDto);
+    }
+  
+    @Get(':categoryId/lists')
+    @HttpCode(HttpStatus.OK)
+    findAllListsForCategory(
+        @Param('categoryId', ParseIntPipe) categoryId: number,
+        @Query() filterListDto: FilterListDto
+    ) {
+        // Public access or keep controller guard? Assuming protected for now.
+        return this.categoriesService.findAllListsForCategory(categoryId, filterListDto);
+    }
+  
+    // --- List Item Routes (Direct access via list ID) ---
+    // Note: These are still under the '/categories' base path because the controller is mounted there.
+  
+    @Get('lists/:listId') // Route: GET /categories/lists/:listId
+    @HttpCode(HttpStatus.OK)
+    findOneList(@Param('listId', ParseIntPipe) listId: number) {
+      // Public access or keep controller guard? Assuming protected for now.
+      return this.categoriesService.findOneList(listId);
+    }
+  
+    @Patch('lists/:listId')
+    @UseGuards(AuthGuard('jwt'))  // Route: PATCH /categories/lists/:listId
+    @HttpCode(HttpStatus.OK)
+    updateList(
+        @Param('listId', ParseIntPipe) listId: number,
+        @Body() updateListDto: UpdateListDto
+    ) {
+        return this.categoriesService.updateList(listId, updateListDto);
+    }
+  
+    @Delete('lists/:listId') // Route: DELETE /categories/lists/:listId
+    @UseGuards(AuthGuard('jwt')) 
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async removeList(@Param('listId', ParseIntPipe) listId: number): Promise<void> {
+        await this.categoriesService.removeList(listId);
+    }
   }
-}
 </file>
 
-<file path="structure-attributes/structure-attributes.controller.ts">
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
-import { StructureAttributesService } from './structure-attributes.service';
-import { Prisma } from '@prisma/client';
-import { AuthGuard } from '@nestjs/passport';
-import { FilterStructureAttributeDto } from './dto/filter-structure-attribute.dto';
-@Controller('structure-attributes')
-export class StructureAttributesController {
-  constructor(private readonly structureAttributesService: StructureAttributesService) {}
-
-  @Post()
-  @UseGuards(AuthGuard('jwt'))
-  create(@Body() createStructureAttributeDto: Prisma.StructureAttributesCreateInput) {
-    return this.structureAttributesService.create(createStructureAttributeDto);
-  }
-
-  @Get()
-  findAll(@Query() filters: FilterStructureAttributeDto) {
-    return this.structureAttributesService.findAll(filters);
-  }
-
-  @Get('structure')
-  findAllStructures() {
-    return this.structureAttributesService.findAllStructures();  
-  }
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.structureAttributesService.findOne(+id);
-  }
-
-  @Patch(':id')
-  @UseGuards(AuthGuard('jwt'))
-  update(
-    @Param('id') id: string,
-    @Body() updateStructureAttributeDto: Prisma.StructureAttributesUpdateInput,
-  ) {
-    return this.structureAttributesService.update(+id, updateStructureAttributeDto);
-  }
-
-  @Delete(':id')
-  @UseGuards(AuthGuard('jwt'))
-  remove(@Param('id') id: string) {
-    return this.structureAttributesService.remove(+id);
-  }
-}
-</file>
-
-<file path="structure-attributes/structure-attributes.module.ts">
+<file path="categories.module.ts">
 import { Module } from '@nestjs/common';
-import { StructureAttributesService } from './structure-attributes.service';
-import { StructureAttributesController } from './structure-attributes.controller';
-import { FilterService } from './filter.service';
+import { CategoriesService } from './categories.service';
+import { CategoriesController } from './categories.controller';
+import { FilteringService } from '../../shared/services/filtering.service'; // Adjust path
+// Import DatabaseModule if needed locally, or ensure it's global
+// import { DatabaseModule } from '../../database/database.module';
 
 @Module({
-  controllers: [StructureAttributesController],
-  providers: [StructureAttributesService, FilterService],
+  // imports: [DatabaseModule], // Import if DatabaseService is provided by a module
+  controllers: [CategoriesController], // Single controller
+  providers: [CategoriesService, FilteringService], // Single service + shared filtering
+  exports: [CategoriesService], // Export if other modules need it (less likely now)
 })
-export class StructureAttributesModule {}
+export class CategoriesModule {}
 </file>
 
-<file path="structure-attributes/structure-attributes.service.ts">
-import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../../database/database.service';
-import { Prisma } from '@prisma/client';
-import { FilterService } from './filter.service';
-import { FilterStructureAttributeDto } from './dto/filter-structure-attribute.dto';
-@Injectable()
-export class StructureAttributesService {
-  private filterConfig = {
-    attributeName: { field: 'attributeName', operator: 'contains' },
-    exactAttributeName: { field: 'attributeName', operator: 'equals' },
-    attributeValue: { field: 'attributeValue', operator: 'contains' },
-    structureId: { field: 'structureId', operator: 'equals' , type:'int'},
-    stare: { field: 'status', operator: 'equals' },
-    // Add more mappings as needed
-  };
-  constructor(private readonly databaseService: DatabaseService, private filterService:FilterService) {}
+<file path="categories.service.ts">
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { DatabaseService } from '../../database/database.service'; // Adjust path
+import { Prisma, Category, List } from '@prisma/client';
+import { FilteringService, FilterConfig } from '../../shared/services/filtering.service'; // Adjust path
+import { CreateCategoryDto } from './dto/create-category.dto'; 
+import {  UpdateCategoryDto } from './dto/update-category.dto'; 
+import {  FilterCategoryDto } from './dto/filter-category.dto'; // Adjust DTO imports
+import { CreateListDto } from './dto/create-list.dto';   
+import { UpdateListDto } from './dto/update-list.dto';   
+import { FilterListDto } from './dto/filter-list.dto';         // Adjust DTO imports
 
-  async create(data: Prisma.StructureAttributesCreateInput) {
-    return this.databaseService.structureAttributes.create({
-      data,
-    });
+@Injectable()
+export class CategoriesService {
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly filteringService: FilteringService,
+  ) {}
+
+  // --- Filter Configurations ---
+  private readonly categoryFilterConfig: FilterConfig = {
+    name: { field: 'name', operator: 'contains', type: 'string' },
+    status: { field: 'status', operator: 'equals', type: 'string' },
+  };
+
+  private readonly listFilterConfig: FilterConfig = {
+    item: { field: 'item', operator: 'contains', type: 'string' },
+    status: { field: 'status', operator: 'equals', type: 'string' },
+    // categoryId filtering is handled implicitly by the route or explicitly if needed
+  };
+
+  // --- Helper Methods ---
+  private async findCategoryOrFail(id: number): Promise<Category> {
+      const category = await this.prisma.category.findUnique({ where: { id } });
+      if (!category) {
+          throw new NotFoundException(`Category with ID ${id} not found`);
+      }
+      return category;
   }
 
-  async findAll(filters: FilterStructureAttributeDto) {
-    const where = this.filterService.createWhereCondition(filters, this.filterConfig);
-    const pagination = this.filterService.createPaginationParams(filters);
-    const orderBy = this.filterService.createSortingParams(filters, this.filterConfig);
+   private async findListOrFail(id: number): Promise<List & { category: Category }> {
+      const list = await this.prisma.list.findUnique({
+          where: { id },
+          include: { category: true }, // Always include category for context
+      });
+      if (!list) {
+          throw new NotFoundException(`List item with ID ${id} not found`);
+      }
+      return list;
+  }
 
-    const [data, total] = await Promise.all([
-      this.databaseService.structureAttributes.findMany({
+  // --- Category Operations ---
+
+  async createCategory(createCategoryDto: CreateCategoryDto): Promise<Category> {
+    try {
+      return await this.prisma.category.create({
+        data: createCategoryDto,
+      });
+    } catch (error) {
+      // Handle potential errors (e.g., unique name constraint)
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          throw new BadRequestException(`Category with name '${createCategoryDto.name}' already exists.`);
+      }
+      throw error;
+    }
+  }
+
+  async findAllCategories(filters: FilterCategoryDto) {
+    const where = this.filteringService.createWhereCondition<'Category'>(
+      filters,
+      this.categoryFilterConfig,
+    );
+    const pagination = this.filteringService.createPaginationParams(filters);
+    const orderBy = this.filteringService.createSortingParams<'Category'>(
+      filters,
+      this.categoryFilterConfig,
+    );
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.category.findMany({
+        where,
+        include: { _count: { select: { lists: true } } }, // Include list count
+        orderBy,
+        ...pagination,
+      }),
+      this.prisma.category.count({ where }),
+    ]);
+
+    const totalPages = pagination.take ? Math.ceil(total / pagination.take) : 1;
+    return {
+      data,
+      meta: { totalItems: total, itemsPerPage: pagination.take ?? total, totalPages, currentPage: filters.page ?? 1 },
+    };
+  }
+
+  async findOneCategory(id: number, includeLists: boolean = false): Promise<Category | null> {
+    const category = await this.prisma.category.findUnique({
+      where: { id },
+      include: {
+        lists: includeLists ? { orderBy: { createdAt: 'desc' } } : false, // Conditionally include lists
+      },
+    });
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+    return category;
+  }
+
+  async updateCategory(id: number, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
+    await this.findCategoryOrFail(id); // Ensure exists
+    try {
+      return await this.prisma.category.update({
+        where: { id },
+        data: updateCategoryDto,
+      });
+    } catch (error) {
+       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          throw new BadRequestException(`Category with name '${updateCategoryDto.name}' already exists.`);
+      }
+      throw error;
+    }
+  }
+
+  async removeCategory(id: number): Promise<Category> {
+    await this.findCategoryOrFail(id); // Ensure exists
+    // Prisma's default behavior for relation constraint might prevent deletion if lists exist.
+    // Add cascade delete in schema or handle manually if needed.
+    try {
+      return await this.prisma.category.delete({ where: { id } });
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+           // Foreign key constraint failed - category likely has lists associated
+           throw new BadRequestException(`Cannot delete category ID ${id} as it has associated list items.`);
+        }
+        throw error;
+    }
+  }
+
+  // --- List Item Operations ---
+
+  async createList(categoryId: number, createListDto: CreateListDto): Promise<List> {
+    await this.findCategoryOrFail(categoryId); // Ensure parent category exists
+
+    try {
+      return await this.prisma.list.create({
+        data: {
+          ...createListDto,
+          categoryId: categoryId, // Assign categoryId from parameter
+        },
+        include: { category: true },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findAllListsForCategory(categoryId: number, filters: FilterListDto) {
+     await this.findCategoryOrFail(categoryId); // Ensure parent category exists
+
+     // Base condition: Filter by the specific categoryId
+     const baseWhere: Prisma.ListWhereInput = { categoryId: categoryId };
+
+     // Add additional filters from the DTO
+     const additionalWhere = this.filteringService.createWhereCondition<'List'>(
+         filters,
+         this.listFilterConfig
+     );
+
+     const where = { ...baseWhere, ...additionalWhere }; // Combine conditions
+
+     const pagination = this.filteringService.createPaginationParams(filters);
+     // Note: Sorting by 'category.name' is not applicable here as all lists belong to the same category
+     const orderBy = this.filteringService.createSortingParams<'List'>(
+         filters,
+         this.listFilterConfig
+     );
+
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.list.findMany({
         where,
         include: {
-          structure: true,
+          category: { select: { id: true, name: true } } // Include basic category info
         },
         orderBy,
         ...pagination,
       }),
-      this.databaseService.structureAttributes.count({ where }),
+      this.prisma.list.count({ where }),
     ]);
 
+    const totalPages = pagination.take ? Math.ceil(total / pagination.take) : 1;
     return {
       data,
-      meta: {
-        total,
-        page: filters.page || 1,
-        limit: filters.limit || 10,
-        totalPages: Math.ceil(total / (filters.limit || 10)),
-      },
+      meta: { totalItems: total, itemsPerPage: pagination.take ?? total, totalPages, currentPage: filters.page ?? 1 },
     };
   }
- async findAllStructures(){
-  return this.databaseService.structure.findMany({});
- }
-  async findOne(id: number) {
-    return this.databaseService.structureAttributes.findUnique({
-      where: { id },
-      include: {
-        structure: true,
-      },
-    });
+
+  async findOneList(listId: number): Promise<List | null> {
+      // findListOrFail already includes the category
+      return this.findListOrFail(listId);
   }
 
-  async update(id: number, data: Prisma.StructureAttributesUpdateInput) {
-    return this.databaseService.structureAttributes.update({
-      where: { id },
-      data,
-    });
+  async updateList(listId: number, updateListDto: UpdateListDto): Promise<List> {
+    await this.findListOrFail(listId); // Ensure list item exists
+
+    // If categoryId is being updated, validate the new categoryId exists
+    if (updateListDto.categoryId !== undefined) {
+        await this.findCategoryOrFail(updateListDto.categoryId);
+    }
+
+    try {
+      return await this.prisma.list.update({
+        where: { id: listId },
+        data: updateListDto,
+        include: { category: true }, // Return updated item with category
+      });
+    } catch (error) {
+      throw error;
+    }
   }
 
-  async remove(id: number) {
-    return this.databaseService.structureAttributes.delete({
-      where: { id },
-    });
+  async removeList(listId: number): Promise<List> {
+    await this.findListOrFail(listId); // Ensure list item exists
+    try {
+      return await this.prisma.list.delete({
+        where: { id: listId },
+      });
+    } catch (error) {
+      throw error;
+    }
   }
 }
 </file>

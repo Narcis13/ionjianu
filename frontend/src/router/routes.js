@@ -29,6 +29,12 @@ const routes = [
         component: () => import('src/pages/ArticleEditPage.vue'),
         props: true, // Pass route params as props
       },
+      {
+        path: 'categories', // Or choose a different path e.g., '/manage-categories'
+        name: 'ManageCategories',
+        component: () => import('pages/CategoriesPage.vue'), // Path to the new page component
+        
+      },
     ]
   },
 

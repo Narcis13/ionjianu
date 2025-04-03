@@ -5,19 +5,23 @@ import { FeaturesService } from './features.service';
 import { PrismaSchemaParserService } from './prisma-schema-parser.service';
 import { StructureAttributesModule } from 'src/schema/structure-attributes/structure-attributes.module';
 import { ArticlesModule } from 'src/schema/articles/articles.module';
+import { CategoriesModule } from 'src/schema/categories/categories.module';
+
 
 @Module({
   imports: [
     StructureModule,
     StructureAttributesModule,
-    ArticlesModule
+    ArticlesModule,
+    CategoriesModule
   ],
   controllers: [FeaturesController],
   providers: [FeaturesService,PrismaSchemaParserService],
   exports: [
     StructureModule,
     StructureAttributesModule,
-    ArticlesModule
+    ArticlesModule,
+    CategoriesModule
   ]
 })
 export class FeaturesModule {}
