@@ -35,6 +35,12 @@ const routes = [
         component: () => import('pages/CategoriesPage.vue'), // Path to the new page component
         
       },
+      {
+        path: 'persoane', // Or choose a different path e.g., '/manage-categories'
+        name: 'Persoane',
+        component: () => import('pages/Person.vue'), // Path to the new page component
+        
+      },
     ]
   },
 

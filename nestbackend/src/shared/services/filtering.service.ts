@@ -17,7 +17,7 @@ type PrismaOrderByInput<T extends keyof Prisma.TypeMap['model']> =
 export interface FilterConfigItem {
   field: string;
   operator: 'equals' | 'contains' | 'in' | 'gt' | 'lt' | 'gte' | 'lte';
-  type?: 'string' | 'number' | 'boolean' | 'date';
+  type?: 'string' | 'number' | 'boolean' | 'date' | 'int';
 }
 
 export type FilterConfig = Record<string, FilterConfigItem>;

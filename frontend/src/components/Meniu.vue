@@ -46,6 +46,16 @@
                     <q-item-label>Atribute structuri</q-item-label>
                   </q-item-section>
                 </q-item>
+                <q-item clickable v-ripple to="/persoane">
+                  <q-item-section>
+                    <q-item-label>Persoane</q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item clickable v-ripple to="/atributepersoane">
+                  <q-item-section>
+                    <q-item-label>Atribute persoane</q-item-label>
+                  </q-item-section>
+                </q-item>
                 <q-item clickable v-ripple to="/categories">
                   <q-item-section>
                     <q-item-label>Liste(Categorii)</q-item-label>

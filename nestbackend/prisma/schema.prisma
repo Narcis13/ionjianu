@@ -132,3 +132,23 @@ model List {
   updatedAt DateTime @updatedAt
 }
 
+model Person {
+  id     Int @id @default(autoincrement())
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  status   String?  @default("active")  @db.VarChar(24)
+  attributes PersonAttributes[] 
+}
+
+model PersonAttributes {
+  id             Int       @id @default(autoincrement())
+  person      Person @relation(fields: [personId], references: [id])
+  personId    Int
+  datatype       Datatypes
+  attributeName  String
+  attributeValue String
+  status   String?  @default("active")  @db.VarChar(24)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}

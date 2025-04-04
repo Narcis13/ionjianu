@@ -6,6 +6,8 @@ import { PrismaSchemaParserService } from './prisma-schema-parser.service';
 import { StructureAttributesModule } from 'src/schema/structure-attributes/structure-attributes.module';
 import { ArticlesModule } from 'src/schema/articles/articles.module';
 import { CategoriesModule } from 'src/schema/categories/categories.module';
+import { PersonModule } from 'src/schema/person/person.module';
+import { PersonAttributesModule } from 'src/schema/person-attributes/person-attribute.module';
 
 
 @Module({
@@ -13,7 +15,9 @@ import { CategoriesModule } from 'src/schema/categories/categories.module';
     StructureModule,
     StructureAttributesModule,
     ArticlesModule,
-    CategoriesModule
+    CategoriesModule,
+    PersonModule,
+    PersonAttributesModule
   ],
   controllers: [FeaturesController],
   providers: [FeaturesService,PrismaSchemaParserService],
@@ -21,7 +25,9 @@ import { CategoriesModule } from 'src/schema/categories/categories.module';
     StructureModule,
     StructureAttributesModule,
     ArticlesModule,
-    CategoriesModule
+    CategoriesModule,
+    PersonModule,
+    PersonAttributesModule
   ]
 })
 export class FeaturesModule {}
