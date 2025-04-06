@@ -18,9 +18,9 @@ export class PersonAttributesController {
     return this.personAttributesService.findAll(filters);
   }
 
-  @Get('structure')
+  @Get('person')
   findAllStructures() {
-    return this.personAttributesService.findAllStructures();  
+    return this.personAttributesService.findAllPersons();  
   }
   @Get(':id')
   findOne(@Param('id') id: string) {

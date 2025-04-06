@@ -41,6 +41,12 @@ const routes = [
         component: () => import('pages/Person.vue'), // Path to the new page component
         
       },
+      {
+        path: 'atributepersoane', // Or choose a different path e.g., '/manage-categories'
+        name: 'AtributePersoane',
+        component: () => import('pages/AtributePersoane.vue'), // Path to the new page component
+        
+      },
     ]
   },
 

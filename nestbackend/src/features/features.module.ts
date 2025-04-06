@@ -7,7 +7,7 @@ import { StructureAttributesModule } from 'src/schema/structure-attributes/struc
 import { ArticlesModule } from 'src/schema/articles/articles.module';
 import { CategoriesModule } from 'src/schema/categories/categories.module';
 import { PersonModule } from 'src/schema/person/person.module';
-import { PersonAttributesModule } from 'src/schema/person-attributes/person-attribute.module';
+import { PersonAttributesModule } from 'src/schema/person-attributes/person-attributes.module';
 
 
 @Module({

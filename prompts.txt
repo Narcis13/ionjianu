@@ -6,3 +6,5 @@ system: Generate clean, readable code that fully solves the problem with minimal
 
 user:
 plan generat de Grok
+
+

@@ -4,7 +4,7 @@
       <model-crud-table
         v-if="modelMetadata"
         :model-metadata="modelMetadata"
-        :base-url="`${host}/structure`"
+        :base-url="`${host}/person`"
       />
       <div v-else-if="error" class="text-negative">
         {{ error }}

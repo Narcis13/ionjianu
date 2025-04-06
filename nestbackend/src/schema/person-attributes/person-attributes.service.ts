@@ -45,8 +45,8 @@ export class PersonAttributesService {
       },
     };
   }
- async findAllStructures(){
-  return this.databaseService.personAttributes.findMany({});
+ async findAllPersons(){
+  return this.databaseService.person.findMany({});
  }
   async findOne(id: number) {
     return this.databaseService.personAttributes.findUnique({
