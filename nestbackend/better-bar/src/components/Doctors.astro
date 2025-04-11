@@ -84,11 +84,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const nextBtn = document.getElementById('nextBtn');
   
   let currentIndex = 0;
-  const cardsToShow = 3;
   const totalCards = cards.length;
+  
+  // Determine cards to show based on screen width
+  function getCardsToShow() {
+    if (window.innerWidth <= 768) {
+      return 1;
+    } else if (window.innerWidth <= 991) {
+      return 2;
+    } else {
+      return 3;
+    }
+  }
+  
+  let cardsToShow = getCardsToShow();
 
   function updateSlider() {
-    const offset = -currentIndex * (100 / cardsToShow);
+    const cardWidth = 100 / cardsToShow;
+    const offset = -currentIndex * cardWidth;
     wrapper.style.transform = `translateX(${offset}%)`;
     
     // Update buttons state
@@ -106,6 +119,19 @@ document.addEventListener('DOMContentLoaded', () => {
   nextBtn.addEventListener('click', () => {
     if (currentIndex < totalCards - cardsToShow) {
       currentIndex++;
+      updateSlider();
+    }
+  });
+  
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    const newCardsToShow = getCardsToShow();
+    if (newCardsToShow !== cardsToShow) {
+      cardsToShow = newCardsToShow;
+      // Reset position if needed
+      if (currentIndex > totalCards - cardsToShow) {
+        currentIndex = totalCards - cardsToShow;
+      }
       updateSlider();
     }
   });
@@ -130,23 +156,26 @@ document.addEventListener('DOMContentLoaded', () => {
 .doctors-slider {
   position: relative;
   overflow: hidden;
-  padding: 20px 0;
+  padding: 20px 40px; /* Increased padding to accommodate buttons */
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .doctors-wrapper {
   display: flex;
   transition: transform 0.5s ease;
-  gap: 30px;
-  width: calc(33.333% * 5); /* Adjust based on number of doctors */
+  gap: 20px;
+  width: 100%;
 }
 
 .doctor-card {
-  flex: 0 0 calc(33.333% - 20px);
+  flex: 0 0 calc(33.333% - 14px);
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   transition: all 0.3s ease;
+  max-width: 320px;
 }
 
 .doctor-card:hover {
@@ -156,55 +185,59 @@ document.addEventListener('DOMContentLoaded', () => {
 .doctor-img {
   position: relative;
   overflow: hidden;
+  height: 200px;
 }
 
 .doctor-img img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
   transition: all 0.3s ease;
 }
 
 .doctor-info {
-  padding: 20px;
+  padding: 15px;
   text-align: center;
 }
 
 .doctor-info h4 {
   font-weight: 700;
   margin-bottom: 5px;
-  font-size: 18px;
+  font-size: 16px;
   color: #2c4964;
 }
 
 .doctor-info span {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   color: #1977cc;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .doctor-info p {
   font-style: italic;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.4;
   color: #6b7280;
 }
 
 .slider-controls {
   position: absolute;
   top: 50%;
+  width: 100%;
   left: 0;
   right: 0;
   transform: translateY(-50%);
   display: flex;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 10px;
   pointer-events: none;
+  z-index: 10;
 }
 
 .slider-btn {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #1977cc;
   border: none;
@@ -215,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
   cursor: pointer;
   transition: all 0.3s ease;
   pointer-events: auto;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .slider-btn:hover {
@@ -227,15 +261,17 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 .slider-btn i {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 @media (max-width: 991px) {
   .doctor-card {
-    flex: 0 0 calc(50% - 15px);
+    flex: 0 0 calc(50% - 10px);
+    max-width: none;
   }
-  .doctors-wrapper {
-    width: calc(50% * 5);
+  
+  .doctors-slider {
+    max-width: 700px;
   }
 }
 
@@ -243,8 +279,14 @@ document.addEventListener('DOMContentLoaded', () => {
   .doctor-card {
     flex: 0 0 100%;
   }
-  .doctors-wrapper {
-    width: 500%;
+  
+  .doctors-slider {
+    max-width: 320px;
+    padding: 20px 30px;
+  }
+  
+  .slider-controls {
+    padding: 0 5px;
   }
 }
 </style>
